@@ -1,0 +1,942 @@
+@page
+@model InventarioWeb.Pages.VolumetriasModel
+@{
+    ViewData["Title"] = "Volumetrías";
+    var tabInicial = !string.IsNullOrWhiteSpace(Model.QCat) ? "material" : "entrada";
+}
+
+<div class="volu-page">
+
+    <!-- ══════════ BARRA DE PESTAÑAS ══════════ -->
+    <div class="volu-actionbar">
+        <div class="volu-tabs" role="tablist">
+            <button type="button" class="volu-tab is-active" data-tab="entrada" onclick="voluCambiarTab('entrada')">
+                <i class="bi bi-box-arrow-in-down"></i> Entradas
+                <span class="volu-tab-count" id="sumEntradas">0</span>
+            </button>
+            <button type="button" class="volu-tab" data-tab="salida" onclick="voluCambiarTab('salida')">
+                <i class="bi bi-box-arrow-up"></i> Salidas
+                <span class="volu-tab-count" id="sumSalidas">0</span>
+            </button>
+            <button type="button" class="volu-tab" data-tab="material" onclick="voluCambiarTab('material')">
+                <i class="bi bi-calculator"></i> Materiales
+                <span class="volu-tab-count" id="sumMateriales">0</span>
+            </button>
+            <button type="button" class="volu-tab" data-tab="volumetria" onclick="voluCambiarTab('volumetria')">
+                <i class="bi bi-clipboard-data"></i> Volumetrías
+                <span class="volu-tab-count" id="sumTotal">0</span>
+            </button>
+        </div>
+        <div class="volu-proy-selector" style="position:relative;">
+            <label for="inputProyectoVolu"><i class="bi bi-diagram-3"></i> Seleccionar por proyecto</label>
+            <input type="text" id="inputProyectoVolu" placeholder="Buscar proyecto..." autocomplete="off" />
+            <button type="button" id="btnLimpiarProyecto" class="volu-proy-clear" title="Quitar filtro" onclick="seleccionarPorProyecto(null)" hidden>
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <button type="button" id="btnGenerar" class="btn-generar" onclick="generarImpresion()" disabled>
+            <i class="bi bi-printer"></i> Generar impresión
+        </button>
+    </div>
+
+    <!-- ══════════ PANEL: ENTRADAS ══════════ -->
+    <div class="volu-panel is-active" data-panel="entrada">
+        <div class="card-dark volu-col">
+            <div class="card-dark-header volu-col-header">
+                <h2><i class="bi bi-box-arrow-in-down me-2"></i>Entradas de material</h2>
+                <span class="badge-accent"><span id="countEntradas">0</span> sel. / @Model.TotalEntradas</span>
+            </div>
+            <div class="volu-table-wrapper">
+                <table class="table-dark-custom volu-table">
+                    <thead>
+                        <tr>
+                            <th class="th-chk">
+                                <label class="lns-checkbox">
+                                    <input type="checkbox" id="chkTodasEntradas" onchange="voluToggleTodos('entrada', this)">
+                                    <span></span>
+                                </label>
+                            </th>
+                            <th class="col-id">ID</th>
+                            <th class="col-cod">Código</th>
+                            <th class="col-desc">Descripción</th>
+                            <th class="col-cant">Cantidad</th>
+                            <th class="col-prov">Proveedor</th>
+                            <th class="col-fecha">Fecha</th>
+                            <th class="col-proy">Proyecto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var e in Model.Entradas)
+                        {
+                            <tr>
+                                <td class="td-chk">
+                                    <label class="lns-checkbox">
+                                        <input type="checkbox" class="chk-entrada"
+                                               data-id="@e.Id" data-cod="@e.CodFab" data-cant="@e.Cantidad"
+                                               data-proy="@e.Proyecto"
+                                               onchange="voluActualizar('entrada')">
+                                        <span></span>
+                                    </label>
+                                </td>
+                                <td class="col-id">@e.Id</td>
+                                <td><span class="td-codigo">@e.CodFab</span></td>
+                                <td><span class="cell-desc" title="@e.Descripcion">@e.Descripcion</span></td>
+                                <td>
+                                    <div class="qty-wrap">
+                                        @e.Cantidad.ToString("N2")
+                                        <span class="um-tag">@e.Um</span>
+                                    </div>
+                                </td>
+                                <td class="cell-sec">@(string.IsNullOrEmpty(e.Proveedor) ? "—" : e.Proveedor)</td>
+                                <td class="cell-date">@e.FechaCompra.ToString("yyyy-MM-dd")</td>
+                                <td class="cell-sec">@(string.IsNullOrEmpty(e.Proyecto) ? "—" : e.Proyecto)</td>
+                            </tr>
+                        }
+                        @if (!Model.Entradas.Any())
+                        {
+                            <tr class="empty-row"><td colspan="8">Sin registros</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════ PANEL: SALIDAS ══════════ -->
+    <div class="volu-panel" data-panel="salida">
+        <div class="card-dark volu-col">
+            <div class="card-dark-header volu-col-header">
+                <h2><i class="bi bi-box-arrow-up me-2"></i>Salidas de material</h2>
+                <span class="badge-accent"><span id="countSalidas">0</span> sel. / @Model.TotalSalidas</span>
+            </div>
+            <div class="volu-table-wrapper">
+                <table class="table-dark-custom volu-table">
+                    <thead>
+                        <tr>
+                            <th class="th-chk">
+                                <label class="lns-checkbox">
+                                    <input type="checkbox" id="chkTodasSalidas" onchange="voluToggleTodos('salida', this)">
+                                    <span></span>
+                                </label>
+                            </th>
+                            <th class="col-id">ID</th>
+                            <th class="col-cod">Código</th>
+                            <th class="col-desc">Descripción</th>
+                            <th class="col-cant">Cantidad</th>
+                            <th class="col-fecha">Fecha</th>
+                            <th class="col-proy">Proyecto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in Model.Salidas)
+                        {
+                            <tr>
+                                <td class="td-chk">
+                                    <label class="lns-checkbox">
+                                        <input type="checkbox" class="chk-salida"
+                                               data-id="@s.Id" data-cod="@s.CodFab" data-cant="@s.Cantidad"
+                                               data-proy="@s.ProyectoAsignado"
+                                               onchange="voluActualizar('salida')">
+                                        <span></span>
+                                    </label>
+                                </td>
+                                <td class="col-id">@s.Id</td>
+                                <td><span class="td-codigo">@s.CodFab</span></td>
+                                <td><span class="cell-desc" title="@s.Descripcion">@s.Descripcion</span></td>
+                                <td>
+                                    <div class="qty-wrap">
+                                        @s.Cantidad.ToString("N2")
+                                        <span class="um-tag">@s.Um</span>
+                                    </div>
+                                </td>
+                                <td class="cell-date">@s.FechaSalida.ToString("yyyy-MM-dd")</td>
+                                <td class="cell-sec">@(string.IsNullOrEmpty(s.ProyectoAsignado) ? "—" : s.ProyectoAsignado)</td>
+                            </tr>
+                        }
+                        @if (!Model.Salidas.Any())
+                        {
+                            <tr class="empty-row"><td colspan="7">Sin registros</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════ PANEL: MATERIALES (ESTIMACIÓN / CATÁLOGO) ══════════ -->
+    <div class="volu-panel" data-panel="material">
+        <div class="card-dark volu-col">
+            <div class="card-dark-header volu-col-header">
+                <h2><i class="bi bi-calculator me-2"></i>Materiales — Estimación</h2>
+                <span class="badge-accent"><span id="countMateriales">0</span> sel. / @Model.TotalCatalogo</span>
+            </div>
+            <div class="volu-filter">
+                <form method="get" class="volu-search">
+                    <i class="bi bi-search"></i>
+                    <input type="text" name="QCat" value="@Model.QCat"
+                           placeholder="Buscar en catálogo..." autocomplete="off" />
+                    @if (!string.IsNullOrWhiteSpace(Model.QCat))
+                    {
+                        <a href="/Volumetrias" class="volu-search-clear"><i class="bi bi-x-lg"></i></a>
+                    }
+                </form>
+            </div>
+            <div class="volu-table-wrapper">
+                <table class="table-dark-custom volu-table">
+                    <thead>
+                        <tr>
+                            <th class="th-chk">
+                                <label class="lns-checkbox">
+                                    <input type="checkbox" id="chkTodosMateriales" onchange="voluToggleTodos('material', this)">
+                                    <span></span>
+                                </label>
+                            </th>
+                            <th class="col-cod">Código</th>
+                            <th class="col-desc">Descripción</th>
+                            <th class="col-cant text-right">Existencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model.Catalogo)
+                        {
+                            <tr>
+                                <td class="td-chk">
+                                    <label class="lns-checkbox">
+                                        <input type="checkbox" class="chk-material"
+                                               data-cod="@c.CodFab" onchange="voluActualizar('material')">
+                                        <span></span>
+                                    </label>
+                                </td>
+                                <td><span class="td-codigo">@c.CodFab</span></td>
+                                <td><span class="cell-desc" title="@c.Descripcion">@c.Descripcion</span></td>
+                                <td class="text-right">
+                                    <div class="qty-wrap">
+                                        @c.Cant.ToString("N2")
+                                        <span class="um-tag">@c.Um</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Catalogo.Any())
+                        {
+                            <tr class="empty-row"><td colspan="4">Sin registros</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════ PANEL: VOLUMETRÍAS (RESUMEN DE SELECCIÓN) ══════════ -->
+    <div class="volu-panel" data-panel="volumetria">
+        <div class="card-dark volu-col">
+            <div class="card-dark-header volu-col-header">
+                <h2><i class="bi bi-clipboard-data me-2"></i>Volumetría — Resumen de selección</h2>
+                <span class="badge-accent"><span id="countTotal">0</span> elementos</span>
+            </div>
+            <div class="volu-resumen" id="voluResumen">
+                <div class="volu-resumen-empty">
+                    <i class="bi bi-inbox"></i>
+                    <p>Aún no has seleccionado elementos. Ve a las pestañas <b>Entradas</b>, <b>Salidas</b> o <b>Materiales</b> y marca los registros que quieras incluir en la impresión.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+    .volu-page { width: 100%; }
+
+    /* ── Barra de pestañas ── */
+    .volu-actionbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        background: #ffffff;
+        border: 1px solid #e5e9f0;
+        border-radius: 12px;
+        padding: 12px 18px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(15,23,42,.05);
+    }
+    .volu-tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .volu-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #f1f5fb;
+        border: 1px solid #e2e8f0;
+        border-radius: 9px;
+        padding: 9px 16px;
+        font-size: .88rem;
+        color: #475569;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background .15s, color .15s, border-color .15s, box-shadow .15s;
+    }
+    .volu-tab i { color: #64748b; transition: color .15s; }
+    .volu-tab:hover {
+        background: #e2ebf8;
+        border-color: #cbd5e1;
+    }
+    .volu-tab.is-active {
+        background: #1e3a6e;
+        border-color: #1e3a6e;
+        color: #ffffff;
+        box-shadow: 0 3px 10px rgba(30,58,110,.25);
+    }
+    .volu-tab.is-active i { color: #a8c0e0; }
+    .volu-tab-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 6px;
+        border-radius: 6px;
+        background: #1e3a6e;
+        color: #ffffff;
+        font-size: .78rem;
+        font-weight: 700;
+    }
+    .volu-tab.is-active .volu-tab-count {
+        background: #2563eb;
+        color: #ffffff;
+    }
+
+    .volu-proy-selector {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+    }
+    .volu-proy-selector label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: .82rem;
+        font-weight: 600;
+        color: #475569;
+        white-space: nowrap;
+    }
+    .volu-proy-selector label i { color: #64748b; }
+    .volu-proy-selector input[type="text"] {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 8px;
+        background: #f5f7fa;
+        font-size: .85rem;
+        color: #0f172a;
+        padding: 8px 14px;
+        width: 260px;
+    }
+    .volu-proy-selector input[type="text"]:focus {
+        border-color: #93c5fd;
+        background: #ffffff;
+        box-shadow: 0 0 0 3px rgba(147,197,253,.25);
+        outline: none;
+    }
+    .volu-proy-clear {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px; height: 30px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 8px;
+        background: #fff;
+        color: #64748b;
+        cursor: pointer;
+    }
+    .volu-proy-clear:hover { border-color: #fca5a5; color: #ef4444; }
+    .volu-proy-dropdown {
+        position: fixed;
+        background: #ffffff;
+        border: 1px solid #93c5fd;
+        border-radius: 8px;
+        box-shadow: 0 8px 32px rgba(15,23,42,.18);
+        z-index: 99999;
+        overflow-y: auto;
+        min-width: 260px;
+    }
+    .volu-proy-item { padding: .5rem .85rem; cursor: pointer; font-size: .84rem; border-bottom: 1px solid #f1f5f9; }
+    .volu-proy-item:hover, .volu-proy-item.active { background: #eff6ff; }
+    .volu-proy-item .cot { font-weight: 700; color: #1d4ed8; font-family: 'Consolas', 'SF Mono', monospace; }
+    .volu-proy-item .nom { color: #475569; margin-left: 6px; }
+
+    .btn-generar {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: #2563eb;
+        color: #ffffff;
+        border: none;
+        border-radius: 9px;
+        font-size: .88rem;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background .15s, box-shadow .15s;
+    }
+    .btn-generar:hover:not(:disabled) {
+        background: #1d4ed8;
+        box-shadow: 0 3px 10px rgba(37,99,235,.3);
+    }
+    .btn-generar:disabled {
+        background: #a9bad6;
+        cursor: not-allowed;
+        opacity: .75;
+    }
+
+    /* ── Paneles (una sola tabla a la vez) ── */
+    .volu-panel { display: none; }
+    .volu-panel.is-active { display: block; }
+
+    .volu-col {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .volu-col-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+    .volu-col-header h2 {
+        font-size: 1rem;
+        margin: 0;
+        display: flex;
+        align-items: center;
+    }
+
+    /* Buscador del catálogo */
+    .volu-filter {
+        padding: .75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .volu-search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: .35rem .7rem;
+        max-width: 420px;
+    }
+    .volu-search i { color: #64748b; font-size: .85rem; }
+    .volu-search input {
+        border: none;
+        background: transparent;
+        outline: none;
+        flex: 1;
+        font-size: .85rem;
+        color: var(--text-primary);
+    }
+    .volu-search-clear { color: #94a3b8; display: flex; }
+    .volu-search-clear:hover { color: #ef4444; }
+
+    /* Wrapper con scroll — una sola tabla, más alto disponible */
+    .volu-table-wrapper {
+        overflow-y: auto;
+        overflow-x: auto;
+        max-height: calc(100vh - 240px);
+    }
+    .volu-table-wrapper::-webkit-scrollbar { width: 9px; height: 9px; }
+    .volu-table-wrapper::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+    .volu-table-wrapper::-webkit-scrollbar-thumb { background: #b6c4dc; border-radius: 4px; }
+    .volu-table-wrapper::-webkit-scrollbar-thumb:hover { background: #8ba3c7; }
+
+    /* ── Tabla — tema azul, ancho completo ── */
+    .volu-page .volu-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .volu-page .col-id   { width: 70px; }
+    .volu-page .col-cod  { width: 120px; }
+    .volu-page .col-cant { width: 140px; }
+    .volu-page .col-prov,
+    .volu-page .col-proy { width: 200px; }
+    .volu-page .col-fecha { width: 120px; }
+
+    /* Metadatos secundarios */
+    .volu-page .cell-sec {
+        color: #334155;
+        font-size: .82rem;
+    }
+    .volu-page .cell-date {
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .78rem;
+        color: #475569;
+        white-space: nowrap;
+    }
+
+    /* Encabezado navy */
+    .volu-page .volu-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+    .volu-page .volu-table thead th {
+        background: #1e3a6e;
+        color: #a8c0e0;
+        font-size: .67rem;
+        font-weight: 700;
+        letter-spacing: .09em;
+        text-transform: uppercase;
+        text-align: left;
+        padding: 12px 16px;
+        border: none;
+        white-space: nowrap;
+    }
+    .volu-page .volu-table thead th.text-right { text-align: right; }
+
+    /* Filas con zebra azul suave */
+    .volu-page .volu-table tbody tr {
+        border-bottom: 1px solid #e4ecf9;
+        transition: background .12s;
+    }
+    .volu-page .volu-table tbody tr:nth-child(even) { background: #eef3ff; }
+    .volu-page .volu-table tbody tr:nth-child(odd)  { background: #ffffff; }
+    .volu-page .volu-table tbody tr:last-child { border-bottom: none; }
+    .volu-page .volu-table tbody tr:hover {
+        background: #dbeafe !important;
+        outline: 1.5px solid #93c5fd;
+        outline-offset: -1px;
+    }
+
+    .volu-page .volu-table tbody td {
+        padding: 12px 16px;
+        vertical-align: middle;
+        font-size: .86rem;
+        color: #1b2a45;
+    }
+    .volu-page .volu-table tbody td.col-id {
+        color: #7ea8cc;
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .78rem;
+        font-weight: 600;
+    }
+
+    /* Código — pill azul */
+    .volu-page .td-codigo {
+        display: inline-block;
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .8rem;
+        font-weight: 700;
+        color: #1d4ed8;
+        background: #eff6ff;
+        border: 1.5px solid #93c5fd;
+        border-radius: 6px;
+        padding: 3px 9px;
+        line-height: 1.5;
+        white-space: nowrap;
+    }
+
+    /* Descripción — completa (ya no se recorta, hay ancho de sobra) */
+    .volu-page .cell-desc {
+        color: #0f172a;
+        font-size: .86rem;
+        font-weight: 500;
+        line-height: 1.4;
+        word-break: break-word;
+    }
+
+    /* Cantidad + UM */
+    .volu-page .qty-wrap {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .86rem;
+        font-weight: 700;
+        color: #1e3a6e;
+    }
+    .volu-page .text-right .qty-wrap { justify-content: flex-end; }
+    .volu-page .um-tag {
+        font-family: system-ui, sans-serif;
+        font-size: .62rem;
+        font-weight: 700;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+        padding: 3px 7px;
+        border-radius: 5px;
+        background: #2563eb;
+        color: #ffffff;
+        flex-shrink: 0;
+    }
+    .volu-page .empty-row td {
+        text-align: center;
+        color: #94a3b8;
+        padding: 2.5rem !important;
+        font-size: .85rem;
+    }
+
+    /* Fila seleccionada — azul con acento lateral */
+    .volu-page .volu-table tbody tr.row-selected {
+        background: #bfdbfe !important;
+        box-shadow: inset 3px 0 0 #1e3a6e;
+    }
+
+    /* Fila fuera del proyecto seleccionado — oculta */
+    .volu-page .volu-table tbody tr.volu-row-filtrada { display: none; }
+
+    /* ── Columna checkbox ── */
+    .volu-page .th-chk, .volu-page .td-chk {
+        width: 40px;
+        text-align: center;
+        padding: 6px 4px !important;
+    }
+    .volu-page .lns-checkbox {
+        display: inline-flex;
+        align-items: center;
+        line-height: 1;
+        border-radius: 5px;
+        padding: 4px 5px;
+        user-select: none;
+        cursor: pointer;
+        margin: 0;
+        position: relative;
+    }
+    .volu-page .lns-checkbox span { position: relative; display: flex; align-items: center; }
+    .volu-page .lns-checkbox input[type="checkbox"] {
+        position: absolute;
+        clip: rect(1px, 1px, 1px, 1px);
+        padding: 0; border: 0; height: 1px; width: 1px; overflow: hidden;
+    }
+    .volu-page .lns-checkbox span::before {
+        content: "";
+        display: inline-block;
+        border-radius: 4px;
+        background-color: #dbeafe;
+        height: 18px; width: 18px;
+        border: 1.5px solid #93c5fd;
+        flex-shrink: 0;
+        transition: border-color .15s, background-color .15s;
+    }
+    .volu-page .lns-checkbox span::after {
+        content: "";
+        display: inline-block;
+        height: 10px; width: 10px;
+        border-radius: 2px;
+        background-color: transparent;
+        left: 4px;
+        position: absolute;
+        transition: background-color .15s;
+    }
+    .volu-page .lns-checkbox input[type="checkbox"]:checked + span::before {
+        background-color: #1e3a6e;
+        border-color: #1e3a6e;
+    }
+    .volu-page .lns-checkbox input[type="checkbox"]:checked + span::after {
+        background-color: #93c5fd;
+    }
+    .volu-page .lns-checkbox:hover span::before {
+        border-color: #2563eb;
+        background-color: #bfdbfe;
+    }
+    .volu-page thead .lns-checkbox span::before {
+        background-color: #2a4a80;
+        border-color: #5c82b8;
+    }
+    .volu-page thead .lns-checkbox input[type="checkbox"]:checked + span::before {
+        background-color: #2563eb;
+        border-color: #93c5fd;
+    }
+    .volu-page thead .lns-checkbox input[type="checkbox"]:checked + span::after {
+        background-color: #e0f0ff;
+    }
+
+    /* ── Resumen (pestaña Volumetrías) ── */
+    .volu-resumen { padding: 1.1rem 1.25rem 1.5rem; }
+    .volu-resumen-empty {
+        text-align: center;
+        color: #94a3b8;
+        padding: 3rem 1rem;
+    }
+    .volu-resumen-empty i { font-size: 2.4rem; color: #cbd5e1; }
+    .volu-resumen-empty p { margin: .8rem auto 0; max-width: 480px; font-size: .9rem; line-height: 1.5; }
+    .volu-resumen-empty b { color: #475569; }
+    .volu-res-group { margin-bottom: 1.4rem; }
+    .volu-res-group:last-child { margin-bottom: 0; }
+    .volu-res-group-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: .82rem;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: #1e3a6e;
+        margin: 0 0 .6rem;
+        padding-bottom: .45rem;
+        border-bottom: 2px solid #e4ecf9;
+    }
+    .volu-res-group-title .n {
+        margin-left: auto;
+        background: #1e3a6e;
+        color: #fff;
+        font-size: .72rem;
+        border-radius: 6px;
+        padding: 2px 8px;
+    }
+    .volu-res-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        font-size: .85rem;
+    }
+    .volu-res-item:nth-child(even) { background: #f7faff; }
+    .volu-res-item .td-codigo { margin: 0; }
+    .volu-res-item .desc { color: #1b2a45; flex: 1; min-width: 0; }
+    .volu-res-item .qty {
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-weight: 700;
+        color: #1e3a6e;
+        white-space: nowrap;
+    }
+</style>
+
+@section Scripts {
+<script>
+(function () {
+    const MAPA = {
+        entrada:  { clase: '.chk-entrada',  count: 'countEntradas',  todos: 'chkTodasEntradas',  sum: 'sumEntradas'  },
+        salida:   { clase: '.chk-salida',   count: 'countSalidas',   todos: 'chkTodasSalidas',   sum: 'sumSalidas'   },
+        material: { clase: '.chk-material', count: 'countMateriales', todos: 'chkTodosMateriales', sum: 'sumMateriales' },
+    };
+
+    window.voluCambiarTab = function (tab) {
+        document.querySelectorAll('.volu-tab').forEach(b =>
+            b.classList.toggle('is-active', b.dataset.tab === tab));
+        document.querySelectorAll('.volu-panel').forEach(p =>
+            p.classList.toggle('is-active', p.dataset.panel === tab));
+        if (tab === 'volumetria') renderResumen();
+    };
+
+    function visibles(clase) {
+        return Array.from(document.querySelectorAll(clase))
+            .filter(c => !c.closest('tr')?.classList.contains('volu-row-filtrada'));
+    }
+
+    window.voluActualizar = function (tipo) {
+        const cfg = MAPA[tipo];
+        if (!cfg) return;
+        const todos   = visibles(cfg.clase);
+        const checked = todos.filter(c => c.checked);
+
+        todos.forEach(c => {
+            const tr = c.closest('tr');
+            if (tr) tr.classList.toggle('row-selected', c.checked);
+        });
+
+        const countEl = document.getElementById(cfg.count);
+        if (countEl) countEl.textContent = checked.length;
+        const sumEl = document.getElementById(cfg.sum);
+        if (sumEl) sumEl.textContent = checked.length;
+
+        const chkTodos = document.getElementById(cfg.todos);
+        if (chkTodos) {
+            if (checked.length === 0)                 { chkTodos.indeterminate = false; chkTodos.checked = false; }
+            else if (checked.length === todos.length) { chkTodos.indeterminate = false; chkTodos.checked = true; }
+            else                                      { chkTodos.indeterminate = true; }
+        }
+
+        actualizarTotales();
+    };
+
+    window.voluToggleTodos = function (tipo, chkAll) {
+        const cfg = MAPA[tipo];
+        if (!cfg) return;
+        visibles(cfg.clase).forEach(c => c.checked = chkAll.checked);
+        window.voluActualizar(tipo);
+    };
+
+    // ── Selección automática por proyecto (Entradas + Salidas) ──
+    // El campo proyecto en entradas/salidas a veces guarda solo el número de
+    // cotización ("8556") y a veces "número - nombre" ("999 - OC FO..."), así
+    // que se compara solo el número inicial para que ambos formatos coincidan.
+    function numProyecto(s) {
+        const m = String(s ?? '').trim().match(/^(\d+)/);
+        return m ? m[1] : String(s ?? '').trim();
+    }
+
+    window.seleccionarPorProyecto = function (cotizacion) {
+        ['entrada', 'salida'].forEach(tipo => {
+            const cfg = MAPA[tipo];
+            document.querySelectorAll(cfg.clase).forEach(c => {
+                const coincide = !cotizacion || numProyecto(c.dataset.proy) === cotizacion;
+                c.checked = !!cotizacion && coincide;
+                const tr = c.closest('tr');
+                if (tr) tr.classList.toggle('volu-row-filtrada', !coincide);
+            });
+            window.voluActualizar(tipo);
+        });
+        const btnLimpiar = document.getElementById('btnLimpiarProyecto');
+        if (btnLimpiar) btnLimpiar.hidden = !cotizacion;
+        if (!cotizacion) {
+            const inp = document.getElementById('inputProyectoVolu');
+            if (inp) inp.value = '';
+        }
+    };
+
+    // ── Autocomplete del buscador de proyecto ──────────────
+    (function () {
+        const inp = document.getElementById('inputProyectoVolu');
+        if (!inp) return;
+        let drop = null, idx = -1, results = [];
+
+        function pos() {
+            if (!drop) return;
+            const rect = inp.getBoundingClientRect();
+            const w = Math.max(rect.width, 300);
+            let left = rect.left;
+            if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+            drop.style.width = w + 'px';
+            drop.style.left  = left + 'px';
+            drop.style.top   = (rect.bottom + 4) + 'px';
+            drop.style.maxHeight = Math.min(280, window.innerHeight - rect.bottom - 8) + 'px';
+        }
+        function close() { if (drop) { drop.remove(); drop = null; } idx = -1; }
+        function elegir(item) {
+            inp.value = item.cotizacion + (item.proyecto ? ' - ' + item.proyecto : '');
+            close();
+            window.seleccionarPorProyecto(item.cotizacion);
+        }
+        function show(items) {
+            close();
+            results = items; idx = -1;
+            drop = document.createElement('div');
+            drop.className = 'volu-proy-dropdown';
+            if (!items.length) {
+                drop.innerHTML = '<div style="padding:.6rem .85rem;color:#94a3b8;font-size:.82rem;">Sin resultados</div>';
+            } else {
+                items.forEach(it => {
+                    const d = document.createElement('div');
+                    d.className = 'volu-proy-item';
+                    d.innerHTML = `<span class="cot">${it.cotizacion}</span><span class="nom">${it.proyecto || ''}</span>`;
+                    d.addEventListener('mousedown', e => { e.preventDefault(); elegir(it); });
+                    drop.appendChild(d);
+                });
+            }
+            document.body.appendChild(drop);
+            pos();
+        }
+        const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+        const buscar = debounce(async q => {
+            if (!q) { close(); return; }
+            try {
+                const r = await fetch(`/Volumetrias?handler=BuscarProyectos&q=${encodeURIComponent(q)}`,
+                    { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                show(await r.json());
+            } catch { close(); }
+        }, 250);
+        inp.addEventListener('input', () => buscar(inp.value.trim()));
+        inp.addEventListener('blur', () => setTimeout(close, 160));
+        inp.addEventListener('keydown', e => {
+            if (!drop) return;
+            const its = drop.querySelectorAll('.volu-proy-item');
+            if      (e.key === 'ArrowDown')            { e.preventDefault(); idx = Math.min(idx+1, its.length-1); its.forEach((el,i)=>el.classList.toggle('active',i===idx)); }
+            else if (e.key === 'ArrowUp')              { e.preventDefault(); idx = Math.max(idx-1,0); its.forEach((el,i)=>el.classList.toggle('active',i===idx)); }
+            else if (e.key === 'Enter' && idx >= 0)    { e.preventDefault(); elegir(results[idx]); }
+            else if (e.key === 'Escape')                { close(); }
+        });
+        window.addEventListener('scroll', () => { if (drop) pos(); }, { passive: true });
+        window.addEventListener('resize', () => { if (drop) pos(); }, { passive: true });
+    })();
+
+    function totalSeleccionados() {
+        return document.querySelectorAll('.chk-entrada:checked, .chk-salida:checked, .chk-material:checked').length;
+    }
+
+    function actualizarTotales() {
+        const total = totalSeleccionados();
+        const sumTotal = document.getElementById('sumTotal');
+        if (sumTotal) sumTotal.textContent = total;
+        const countTotal = document.getElementById('countTotal');
+        if (countTotal) countTotal.textContent = total;
+        const btn = document.getElementById('btnGenerar');
+        if (btn) btn.disabled = total === 0;
+        // Si el panel de resumen está visible, refrescarlo
+        const panel = document.querySelector('.volu-panel[data-panel="volumetria"]');
+        if (panel && panel.classList.contains('is-active')) renderResumen();
+    }
+
+    function datosDe(clase) {
+        return Array.from(document.querySelectorAll(clase + ':checked')).map(c => {
+            const tr = c.closest('tr');
+            const cod  = c.dataset.cod || '';
+            const desc = tr ? (tr.querySelector('.cell-desc')?.textContent || '').trim() : '';
+            const qty  = tr ? (tr.querySelector('.qty-wrap')?.textContent || '').replace(/\s+/g, ' ').trim() : '';
+            return { cod, desc, qty };
+        });
+    }
+
+    function grupoHTML(titulo, icono, items) {
+        if (!items.length) return '';
+        const filas = items.map(it => `
+            <div class="volu-res-item">
+                <span class="td-codigo">${it.cod}</span>
+                <span class="desc">${it.desc}</span>
+                <span class="qty">${it.qty}</span>
+            </div>`).join('');
+        return `
+            <div class="volu-res-group">
+                <h3 class="volu-res-group-title"><i class="bi ${icono}"></i> ${titulo}<span class="n">${items.length}</span></h3>
+                ${filas}
+            </div>`;
+    }
+
+    function renderResumen() {
+        const cont = document.getElementById('voluResumen');
+        if (!cont) return;
+        const ent = datosDe('.chk-entrada');
+        const sal = datosDe('.chk-salida');
+        const mat = datosDe('.chk-material');
+
+        if (ent.length + sal.length + mat.length === 0) {
+            cont.innerHTML = `
+                <div class="volu-resumen-empty">
+                    <i class="bi bi-inbox"></i>
+                    <p>Aún no has seleccionado elementos. Ve a las pestañas <b>Entradas</b>, <b>Salidas</b> o <b>Materiales</b> y marca los registros que quieras incluir en la impresión.</p>
+                </div>`;
+            return;
+        }
+        cont.innerHTML =
+            grupoHTML('Entradas',  'bi-box-arrow-in-down', ent) +
+            grupoHTML('Salidas',   'bi-box-arrow-up',      sal) +
+            grupoHTML('Materiales','bi-calculator',        mat);
+    }
+
+    window.generarImpresion = function () {
+        const entradas   = Array.from(document.querySelectorAll('.chk-entrada:checked')).map(c => c.dataset.id).filter(Boolean);
+        const salidas    = Array.from(document.querySelectorAll('.chk-salida:checked')).map(c => c.dataset.id).filter(Boolean);
+        const materiales = Array.from(document.querySelectorAll('.chk-material:checked')).map(c => c.dataset.cod).filter(Boolean);
+
+        if (entradas.length + salidas.length + materiales.length === 0) return;
+
+        const params = new URLSearchParams();
+        if (entradas.length)   params.set('entradas',   entradas.join(','));
+        if (salidas.length)    params.set('salidas',    salidas.join(','));
+        if (materiales.length) params.set('materiales', materiales.join(','));
+
+        window.open('/ImprimirVolumetria?' + params.toString(), '_blank');
+    };
+
+    // Estado inicial
+    window.voluActualizar('entrada');
+    window.voluActualizar('salida');
+    window.voluActualizar('material');
+    window.voluCambiarTab('@tabInicial');
+})();
+</script>
+}

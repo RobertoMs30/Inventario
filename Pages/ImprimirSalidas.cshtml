@@ -1,0 +1,177 @@
+@page
+@model InventarioWeb.Pages.ImprimirSalidasModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Imprimir Salidas - OT " + Model.Ot;
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Salidas OT @Model.Ot</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── Forzar colores e imágenes de fondo en impresión ── */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
+        body {
+            font-family: Calibri, Arial, sans-serif;
+            font-size: 15px;
+            background: #fff;
+            color: #000;
+            padding: 16px;
+        }
+
+        :root {
+            --verde-oscuro: #1a5c1a;
+            --verde-medio:  #375623;
+            --verde-claro:  #e2f0d9;
+            --blanco:       #ffffff;
+            --negro:        #000000;
+        }
+
+        /* ── Barra de botones (solo pantalla) ── */
+        .btn-print-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .btn-imprimir {
+            background: #1a5c1a;
+            color: #fff;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-imprimir:hover { background: #155015; }
+        .btn-volver {
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        /* ── Tabla de materiales ── */
+        table.materiales {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.5px solid var(--verde-medio);
+            margin-top: 5px;
+        }
+        table.materiales thead {
+            display: table-header-group; /* repite encabezado en cada página impresa */
+        }
+        table.materiales thead th {
+            background: var(--verde-oscuro);
+            color: var(--blanco);
+            font-weight: bold;
+            text-align: center;
+            padding: 7px 6px;
+            border: 1px solid var(--verde-medio);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        table.materiales tbody td {
+            border: 1px solid var(--verde-medio);
+            padding: 5px 7px;
+            vertical-align: middle;
+            font-size: 14px;
+        }
+        table.materiales tbody tr:nth-child(odd)  td { background: var(--blanco); }
+        table.materiales tbody tr:nth-child(even) td { background: var(--verde-claro); }
+        td.num { text-align: right; white-space: nowrap; }
+        td.ctr { text-align: center; }
+        tr.fila-vacia td { background: var(--verde-claro) !important; height: 20px; }
+
+        /* ── Print ── */
+        @@media print {
+            @@page { margin: 10mm 8mm; size: landscape; }
+            .btn-print-bar { display: none !important; }
+            body { padding: 0; font-size: 12px; }
+            table.materiales tbody td { font-size: 12px; padding: 4px 5px; }
+            table.materiales thead th { font-size: 11px; padding: 5px 4px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="btn-print-bar">
+        <button class="btn-imprimir" onclick="window.print()">
+            🖨️ Imprimir
+        </button>
+        <a class="btn-volver" href="/SalidaMaterial">← Volver</a>
+        <span style="color:#555;font-size:12px;">
+            OT: <strong id="lbl-ot">@Model.Ot</strong>
+            &nbsp;|&nbsp; @Model.Salidas.Count salida(s)
+        </span>
+    </div>
+
+    <div class="formato-wrapper">
+
+        <!-- ════════ TABLA DE MATERIALES ════════ -->
+        <table class="materiales">
+            <thead>
+                <tr>
+                    <th style="width:28px;">ID</th>
+                    <th style="width:68px;">COD-FAB</th>
+                    <th style="width:55px;">COD-INT</th>
+                    <th>DESCRIPCION DE PRODUCTO</th>
+                    <th style="width:52px;">CANTIDAD</th>
+                    <th style="width:30px;">UM</th>
+                    <th style="width:65px;">FECHA</th>
+                    <th style="width:42px;">No SALIDA</th>
+                    <th style="width:110px;">RECIBE</th>
+                    <th>INSTALADO</th>
+                    <th style="width:55px;">PROYECTO</th>
+                    <th style="width:70px;">OBS</th>
+                    <th style="width:48px;">BALANCE</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model.Salidas)
+                {
+                    <tr>
+                        <td class="ctr">@s.Id</td>
+                        <td>@s.CodFab</td>
+                        <td class="ctr">@s.CodInt</td>
+                        <td>@s.Descripcion</td>
+                        <td class="num">@s.Cantidad.ToString("N2")</td>
+                        <td class="ctr">@s.Um</td>
+                        <td class="ctr">@s.FechaSalida.ToString("dd/MM/yyyy")</td>
+                        <td class="ctr">@(s.NoSalida ?? "")</td>
+                        <td>@s.Recibe</td>
+                        <td>@s.Instalado</td>
+                        <td class="ctr">@s.ProyectoAsignado</td>
+                        <td>@s.Obs</td>
+                        <td class="num">@s.Balance.ToString("N2")</td>
+                    </tr>
+                }
+                @for (int i = 0; i < 5; i++)
+                {
+                    <tr class="fila-vacia">
+                        <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                        <td></td><td></td><td></td><td></td><td></td><td></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+    </div>
+</body>
+</html>

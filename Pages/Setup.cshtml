@@ -1,0 +1,46 @@
+@page
+@model InventarioWeb.Pages.SetupModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Setup inicial — Inventario</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css"/>
+</head>
+<body class="bg-light d-flex align-items-center justify-content-center" style="min-height:100vh">
+    <div class="card shadow" style="width:400px">
+        <div class="card-body p-4">
+            <h4 class="mb-1 fw-bold">⚙️ Setup inicial</h4>
+            <p class="text-muted small mb-4">Crea el primer usuario administrador</p>
+
+            @if (!string.IsNullOrEmpty(Model.Error))
+            {
+                <div class="alert alert-danger py-2">@Model.Error</div>
+            }
+
+            <form method="post">
+                <div class="mb-3">
+                    <label class="form-label">Nombre completo</label>
+                    <input type="text" name="nombre" class="form-control"
+                           autofocus placeholder="Ej: Juan Pérez"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Usuario</label>
+                    <input type="text" name="usuario" class="form-control"
+                           placeholder="Ej: admin"/>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Contraseña</label>
+                    <input type="password" name="password" class="form-control"
+                           placeholder="Mínimo 6 caracteres"/>
+                </div>
+                <button type="submit" class="btn btn-success w-100">Crear administrador</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

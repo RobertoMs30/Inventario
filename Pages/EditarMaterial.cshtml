@@ -1,0 +1,193 @@
+@page
+@model InventarioWeb.Pages.EditarMaterialModel
+@{
+    ViewData["Title"] = "Editar material";
+}
+
+<div class="editar-page">
+    <div class="editar-container">
+
+        <!-- Header -->
+        <div class="editar-header">
+            <div>
+                <h1><i class="bi bi-pencil-square me-2"></i>Editar material</h1>
+                <p>Los cambios se aplicarán a todos los registros con este código.</p>
+            </div>
+            <a class="btn-secondary-dark" asp-page="/Catalogo">
+                <i class="bi bi-arrow-left"></i>
+                Volver al catálogo
+            </a>
+        </div>
+
+        <!-- Card -->
+        <div class="card-dark">
+            <div class="card-dark-header">
+                <h2>
+                    <span class="code-badge">@Model.CodFab</span>
+                </h2>
+            </div>
+            <div class="card-dark-body">
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert-dark-error mb-4">
+                        <div class="fw-semibold mb-2">
+                            <i class="bi bi-exclamation-circle me-1"></i>
+                            Revisa lo siguiente:
+                        </div>
+                        <ul>
+                            @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                            {
+                                <li>@err.ErrorMessage</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                <form method="post" class="form-dark">
+                    <input type="hidden" asp-for="CodFab" />
+
+                    <div class="form-grid-edit">
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Descripción</label>
+                            <textarea asp-for="Descripcion" class="form-control" rows="3" placeholder="Descripción del material"></textarea>
+                            <span class="validation-error" asp-validation-for="Descripcion"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">UM</label>
+                            <input asp-for="Um" class="form-control" placeholder="Pza, Kg, etc." />
+                            <span class="validation-error" asp-validation-for="Um"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Proveedor</label>
+                            <input asp-for="Proveedor" class="form-control" placeholder="Nombre del proveedor" />
+                            <span class="validation-error" asp-validation-for="Proveedor"></span>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Partida</label>
+                            <input asp-for="Partida" class="form-control" placeholder="Partida" />
+                            <span class="validation-error" asp-validation-for="Partida"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">PU (Precio unitario)</label>
+                            <input asp-for="Pu" type="number" step="0.01" lang="en" class="form-control" placeholder="0.00" />
+                            <span class="validation-error" asp-validation-for="Pu"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Moneda</label>
+                            <select asp-for="Moneda" class="form-select">
+                                <option value="MXN">MXN</option>
+                                <option value="USD">USD</option>
+                            </select>
+                            <span class="validation-error" asp-validation-for="Moneda"></span>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn-accent" type="submit">
+                                <i class="bi bi-check-lg"></i>
+                                Guardar cambios
+                            </button>
+                            <a class="btn-outline-dark-custom" asp-page="/Catalogo">
+                                Cancelar
+                            </a>
+                        </div>
+
+                    </div>
+                </form>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    .editar-page {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .editar-container {
+        width: 100%;
+        max-width: 600px;
+    }
+
+    .editar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 24px;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .editar-header h1 {
+        color: var(--text-primary);
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0 0 4px 0;
+    }
+
+    .editar-header p {
+        color: var(--text-darker);
+        font-size: 0.85rem;
+        margin: 0;
+    }
+
+    .code-badge {
+        background: linear-gradient(135deg, var(--accent-primary), #00a080);
+        color: var(--bg-primary);
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-family: 'SF Mono', 'Consolas', monospace;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .form-grid-edit {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .form-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 12px;
+        margin-top: 12px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .validation-error {
+        color: var(--accent-red);
+        font-size: 0.8rem;
+        margin-top: 4px;
+    }
+
+    @@media (max-width: 600px) {
+        .form-grid-edit {
+            grid-template-columns: 1fr;
+        }
+
+        .editar-header {
+            flex-direction: column;
+        }
+    }
+</style>

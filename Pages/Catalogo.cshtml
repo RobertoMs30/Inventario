@@ -1,0 +1,1123 @@
+@page
+@model InventarioWeb.Pages.CatalogoModel
+
+<div class="catalogo-page">
+
+    <!-- HEADER -->
+    <div class="catalogo-header">
+        <div>
+            <h1>Catálogo de materiales</h1>
+            <p>Al editar un material se actualizan todos los registros con el mismo código.</p>
+        </div>
+
+    </div>
+
+    <!-- ALERTA STOCK NEGATIVO -->
+    @if (Model.MaterialesNegativos > 0)
+    {
+        <div class="alert-stock-negativo">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span><strong>@Model.MaterialesNegativos material@(Model.MaterialesNegativos > 1 ? "es" : "") con stock negativo:</strong>
+            @string.Join(", ", Model.CodigosNegativos)</span>
+            <span style="font-size:.78rem;opacity:.8;">— Registra una entrada para corregir el saldo</span>
+        </div>
+    }
+
+    <!-- BUSCADOR Y FILTROS -->
+    <div class="catalogo-toolbar">
+        <form method="get" class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text"
+                   name="q"
+                   value="@Request.Query["q"]"
+                   placeholder="Buscar material..." />
+            @if (!string.IsNullOrWhiteSpace(Request.Query["q"]))
+            {
+                <a asp-page="/Catalogo" class="clear-search">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            }
+        </form>
+
+        <div class="toolbar-right">
+
+            <!-- Filtros de orden -->
+            <div class="sort-chips">
+                @{
+                    var currentSort = Model.Sort ?? "recientes";
+                    var currentQ = Request.Query["q"].ToString();
+                }
+                <a href="?sort=recientes@(!string.IsNullOrEmpty(currentQ) ? "&q=" + currentQ : "")"
+                   class="sort-chip @(currentSort == "recientes" ? "active" : "")">
+                    <i class="bi bi-clock-history"></i> Recientes
+                </a>
+                <a href="?sort=az@(!string.IsNullOrEmpty(currentQ) ? "&q=" + currentQ : "")"
+                   class="sort-chip @(currentSort == "az" ? "active" : "")">
+                    <i class="bi bi-sort-alpha-down"></i> A-Z
+                </a>
+                <a href="?sort=cantidad@(!string.IsNullOrEmpty(currentQ) ? "&q=" + currentQ : "")"
+                   class="sort-chip @(currentSort == "cantidad" ? "active" : "")">
+                    <i class="bi bi-boxes"></i> Mayor stock
+                </a>
+                <a href="?sort=precio@(!string.IsNullOrEmpty(currentQ) ? "&q=" + currentQ : "")"
+                   class="sort-chip @(currentSort == "precio" ? "active" : "")">
+                    <i class="bi bi-currency-dollar"></i> Mayor precio
+                </a>
+            </div>
+
+            <div class="record-count">
+                <span class="count-number">@Model.TotalRecords</span>
+                <span class="count-label">materiales</span>
+            </div>
+
+            <div class="legend-incomplete">
+                <span class="dot-warning"></span>
+                <span>Incompleto</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- INFO PAGINACIÓN -->
+    <div class="pagination-info">
+        @{
+            var desde = Model.TotalRecords > 0 ? ((Model.CurrentPage - 1) * Model.PageSize) + 1 : 0;
+            var hasta = Math.Min(Model.CurrentPage * Model.PageSize, Model.TotalRecords);
+        }
+        <span>Mostrando @desde - @hasta de @Model.TotalRecords</span>
+    </div>
+
+    <!-- TABLA -->
+    <div class="table-container">
+        <table class="dark-table">
+            <thead>
+                <tr>
+                    <th>CÓDIGO</th>
+                    <th>MARCA</th>
+                    <th>DESCRIPCIÓN</th>
+                    <th>UM</th>
+                    <th class="text-right">CANTIDAD</th>
+                    <th>PARTIDA</th>
+                    <th class="text-right">P. UNIT.</th>
+                    <th>PROVEEDOR</th>
+                    <th>MONEDA</th>
+                    <th class="text-center">ACCIONES</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var m in Model.Materiales)
+                {
+                    var incompleto = m.Pu is null ||
+                                     string.IsNullOrWhiteSpace(m.Proveedor) ||
+                                     string.IsNullOrWhiteSpace(m.Moneda);
+
+                    <tr>
+                        <td>
+                            <div class="code-wrapper">
+                                @if (incompleto)
+                                {
+                                    <span class="warning-dot" title="Información incompleta"></span>
+                                }
+                                <span class="code-cell">@m.CodFab</span>
+                            </div>
+                        </td>
+                        <td>@(m.Marca ?? "-")</td>
+                        <td>
+                            <span class="desc-cell" title="@m.Descripcion">@m.Descripcion</span>
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(m.Um))
+                            {
+                                <span class="badge-um">@m.Um</span>
+                            }
+                        </td>
+                        <td class="text-right mono">@((m.Cant?.ToString("N0")) ?? "-")</td>
+                        <td>@(m.Partida ?? "-")</td>
+                        <td class="text-right mono">
+                            @if (m.Pu.HasValue)
+                            {
+                                <span>$@m.Pu.Value.ToString("N2")</span>
+                            }
+                            else
+                            {
+                                <span class="empty-value">-</span>
+                            }
+                        </td>
+                        <td>@(m.Proveedor ?? "-")</td>
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(m.Moneda))
+                            {
+                                var badgeClass = m.Moneda.ToUpper() == "USD" ? "badge-usd" : "badge-mxn";
+                                <span class="badge-moneda @badgeClass">@m.Moneda</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <div class="action-buttons">
+                                <button type="button"
+                                        class="btn-action btn-edit"
+                                        title="Editar material"
+                                        onclick="abrirModalEditar(this)"
+                                        data-row-id="@m.Id"
+                                        data-marca="@(m.Marca ?? "")"
+                                        data-cod-fab="@m.CodFab"
+                                        data-descripcion="@m.Descripcion"
+                                        data-um="@m.Um"
+                                        data-proveedor="@(m.Proveedor ?? "")"
+                                        data-partida="@(m.Partida ?? "")"
+                                        data-pu="@(m.Pu?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+                                        data-moneda="@(m.Moneda ?? "MXN")"
+                                        data-cant="@((m.Cant ?? 0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture))">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button"
+                                        class="btn-action btn-delete"
+                                        title="Eliminar"
+                                        onclick="confirmarEliminacion('@m.CodFab', '@m.Descripcion.Replace("'", "\\'").Replace("\"", "")')">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- PAGINACIÓN -->
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pagination-container">
+            <div class="pagination-controls">
+                @* Botón Anterior *@
+                @if (Model.CurrentPage > 1)
+                {
+                    <a asp-page="/Catalogo"
+                       asp-route-q="@Model.Q"
+                       asp-route-sort="@Model.Sort"
+                       asp-route-p="@(Model.CurrentPage - 1)"
+                       class="pagination-btn">
+                        <i class="bi bi-chevron-left"></i>
+                        Anterior
+                    </a>
+                }
+                else
+                {
+                    <span class="pagination-btn disabled">
+                        <i class="bi bi-chevron-left"></i>
+                        Anterior
+                    </span>
+                }
+
+                @* Números de página *@
+                <div class="pagination-numbers">
+                    @{
+                        var startPage = Math.Max(1, Model.CurrentPage - 2);
+                        var endPage = Math.Min(Model.TotalPages, Model.CurrentPage + 2);
+
+                        if (startPage > 1)
+                        {
+                            <a asp-page="/Catalogo" asp-route-q="@Model.Q" asp-route-sort="@Model.Sort" asp-route-p="1" class="page-number">1</a>
+                            if (startPage > 2)
+                            {
+                                <span class="page-ellipsis">...</span>
+                            }
+                        }
+
+                        for (var i = startPage; i <= endPage; i++)
+                        {
+                            if (i == Model.CurrentPage)
+                            {
+                                <span class="page-number active">@i</span>
+                            }
+                            else
+                            {
+                                <a asp-page="/Catalogo" asp-route-q="@Model.Q" asp-route-sort="@Model.Sort" asp-route-p="@i" class="page-number">@i</a>
+                            }
+                        }
+
+                        if (endPage < Model.TotalPages)
+                        {
+                            if (endPage < Model.TotalPages - 1)
+                            {
+                                <span class="page-ellipsis">...</span>
+                            }
+                            <a asp-page="/Catalogo" asp-route-q="@Model.Q" asp-route-sort="@Model.Sort" asp-route-p="@Model.TotalPages" class="page-number">@Model.TotalPages</a>
+                        }
+                    }
+                </div>
+
+                @* Botón Siguiente *@
+                @if (Model.CurrentPage < Model.TotalPages)
+                {
+                    <a asp-page="/Catalogo"
+                       asp-route-q="@Model.Q"
+                       asp-route-sort="@Model.Sort"
+                       asp-route-p="@(Model.CurrentPage + 1)"
+                       class="pagination-btn">
+                        Siguiente
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                }
+                else
+                {
+                    <span class="pagination-btn disabled">
+                        Siguiente
+                        <i class="bi bi-chevron-right"></i>
+                    </span>
+                }
+            </div>
+        </div>
+    }
+
+</div>
+
+<!-- Modal Editar Material -->
+<div class="modal fade" id="modalEditar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-dark">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square me-2" style="color:var(--accent-primary);"></i>
+                    Editar material — <span id="meCodFabTitle" style="font-family:monospace;color:var(--accent-primary);"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="?handler=GuardarEdicion">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="rowId"  id="meRowId" />
+                <input type="hidden" name="codFab" id="meCodFab" />
+                <input type="hidden" name="q"      value="@Model.Q" />
+                <input type="hidden" name="p"      value="@Model.CurrentPage" />
+                <div class="modal-body">
+                    <div class="me-grid">
+
+                        <!-- Marca (full width) -->
+                        <div class="me-field me-full">
+                            <label class="me-label">Marca</label>
+                            <input type="text" name="marca" id="meMarca"
+                                   class="me-input" placeholder="Ej: Siemon, Panduit, Legrand..." />
+                        </div>
+
+                        <!-- Descripción (full width) -->
+                        <div class="me-field me-full">
+                            <label class="me-label">Descripción</label>
+                            <input type="text" name="descripcion" id="meDescripcion"
+                                   class="me-input" placeholder="Descripción del material" />
+                        </div>
+
+                        <!-- UM | Proveedor -->
+                        <div class="me-field">
+                            <label class="me-label">UM</label>
+                            <input type="text" name="um" id="meUm"
+                                   class="me-input" placeholder="Pza, Kg, etc." />
+                        </div>
+                        <div class="me-field">
+                            <label class="me-label">Proveedor</label>
+                            <input type="text" name="proveedor" id="meProveedor"
+                                   class="me-input" placeholder="Nombre del proveedor" />
+                        </div>
+
+                        <!-- Partida | Moneda -->
+                        <div class="me-field">
+                            <label class="me-label">Partida</label>
+                            <input type="text" name="partida" id="mePartida"
+                                   class="me-input" placeholder="Partida" />
+                        </div>
+                        <div class="me-field">
+                            <label class="me-label">Moneda</label>
+                            <select name="moneda" id="meMoneda" class="me-input">
+                                <option value="MXN">MXN</option>
+                                <option value="USD">USD</option>
+                            </select>
+                        </div>
+
+                        <!-- Facturación | Orden de Compra -->
+                        <div class="me-field">
+                            <label class="me-label">Facturación</label>
+                            <input type="text" name="fac" id="meFac"
+                                   class="me-input" placeholder="No. de factura" />
+                        </div>
+                        <div class="me-field">
+                            <label class="me-label">Orden de Compra</label>
+                            <input type="text" name="noPo" id="meNoPo"
+                                   class="me-input" placeholder="No. de orden de compra" />
+                        </div>
+                        <!-- Número de Proyecto (autocomplete) -->
+                        <div class="me-field me-full" style="position:relative">
+                            <label class="me-label">Proyecto</label>
+                            <input type="text" name="proyecto" id="meProyecto"
+                                   class="me-input" placeholder="Buscar proyecto..."
+                                   oninput="acProyectoCatalogo(this)" autocomplete="off" />
+                        </div>
+
+                        <!-- PU | Cantidad -->
+                        <div class="me-field">
+                            <label class="me-label">Precio unitario (PU)</label>
+                            <input type="number" name="pu" id="mePu"
+                                   step="0.01" min="0"
+                                   class="me-input" placeholder="0.00" />
+                        </div>
+                        <div class="me-field">
+                            <label class="me-label">
+                                Cantidad en existencia
+                                <span style="color:#6b7280;font-size:.75rem;margin-left:4px;">(actual: <span id="meCantActual"></span>)</span>
+                            </label>
+                            <input type="text" inputmode="decimal" name="cantStr" id="meCant"
+                                   class="me-input" placeholder="0" />
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-modal btn-cancel" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-modal" style="background:var(--accent-primary);color:#ffffff;font-weight:600;">
+                        <i class="bi bi-check-lg me-1"></i> Guardar cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación -->
+<div class=v"modal fade" id="modalEliminar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-dark">
+            <div class="modal-header">
+                <h5 class="modal-title">Eliminar material</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de eliminar este material?</p>
+                <div class="modal-material-info">
+                    <strong id="modalCodFab"></strong>
+                    <span id="modalDescripcion"></span>
+                </div>
+                <div class="modal-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Se eliminarán también las entradas de inventario asociadas.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-modal btn-cancel" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formEliminar" method="post" style="display: inline;">
+                    <button type="submit" class="btn-modal btn-confirm-delete">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ========== TEMA OSCURO INSPIRADO EN USER.CTRL ========== */
+
+    .catalogo-page {
+        width: 100%;
+    }
+
+    /* Header */
+    .catalogo-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 24px;
+    }
+
+    .catalogo-header h1 {
+        color: var(--text-primary);
+        font-size: 1.65rem;
+        font-weight: 700;
+        margin: 0 0 4px 0;
+    }
+
+    .catalogo-header p {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin: 0;
+    }
+
+    /* Alerta stock negativo */
+    .alert-stock-negativo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        background: rgba(166,48,48,.07);
+        border: 1px solid rgba(166,48,48,.25);
+        border-radius: 8px;
+        color: #7a2020;
+        font-size: .84rem;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
+    .alert-stock-negativo i { color: var(--accent-red); font-size: 1rem; flex-shrink: 0; }
+
+    /* Toolbar */
+    .catalogo-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    /* Sort chips */
+    .sort-chips {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .sort-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 12px;
+        border-radius: 20px;
+        border: 1px solid var(--border-color);
+        color: var(--text-muted);
+        font-size: 0.78rem;
+        text-decoration: none;
+        transition: all 0.15s;
+        background: #ffffff;
+    }
+    .sort-chip:hover {
+        border-color: var(--accent-primary);
+        color: var(--accent-primary);
+        background: var(--accent-light);
+    }
+    .sort-chip.active {
+        background: var(--accent-light);
+        border-color: var(--accent-primary);
+        color: var(--accent-primary);
+        font-weight: 600;
+    }
+
+    .search-box {
+        display: flex;
+        align-items: center;
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 0 16px;
+        width: 320px;
+        transition: border-color 0.18s;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .search-box:focus-within {
+        border-color: var(--accent-primary);
+        box-shadow: 0 0 0 3px rgba(30,58,110,.1);
+    }
+
+    .search-box i {
+        color: var(--text-dark);
+        font-size: 0.9rem;
+    }
+
+    .search-box input {
+        background: transparent;
+        border: none;
+        color: var(--text-primary);
+        padding: 11px;
+        width: 100%;
+        outline: none;
+        font-size: 0.9rem;
+    }
+
+    .search-box input::placeholder {
+        color: var(--text-dark);
+    }
+
+    .clear-search {
+        color: var(--text-dark);
+        text-decoration: none;
+        padding: 4px;
+        transition: color 0.18s;
+    }
+
+    .clear-search:hover {
+        color: var(--text-primary);
+    }
+
+    .toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+    }
+
+    .record-count {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+    }
+
+    .count-number {
+        color: var(--accent-primary);
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .count-label {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+
+    .legend-incomplete {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+    }
+
+    .dot-warning {
+        width: 8px;
+        height: 8px;
+        background: var(--accent-yellow);
+        border-radius: 50%;
+    }
+
+    /* Tabla */
+    .table-container {
+        background: #ffffff;
+        border-radius: 10px;
+        border: 1px solid #dde3ed;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(30,58,110,.08);
+    }
+
+    .dark-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    /* Encabezado navy sólido */
+    .dark-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+    .dark-table thead th {
+        background: #1e3a6e;
+        color: #a8c0e0;
+        font-size: .67rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .1em;
+        padding: 12px 16px;
+        border: none;
+        white-space: nowrap;
+    }
+    .dark-table thead th:first-child {
+        color: #6a90bc;
+    }
+
+    /* Filas alternadas */
+    .dark-table tbody tr {
+        border-bottom: 1px solid #e4ecf9;
+        transition: background .12s;
+    }
+    .dark-table tbody tr:nth-child(even) { background: #eef3ff; }
+    .dark-table tbody tr:nth-child(odd)  { background: #ffffff; }
+    .dark-table tbody tr:last-child { border-bottom: none; }
+    .dark-table tbody tr:hover {
+        background: #dbeafe !important;
+        outline: 1.5px solid #93c5fd;
+        outline-offset: -1px;
+    }
+
+    .dark-table tbody td {
+        color: #1b2a45;
+        font-size: .9rem;
+        padding: 12px 16px;
+        vertical-align: middle;
+    }
+
+    /* Code wrapper con indicador de incompleto */
+    .code-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .warning-dot {
+        width: 7px;
+        height: 7px;
+        background: #b8762a;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    /* Código — pill azul saturado */
+    .code-cell {
+        display: inline-block;
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .82rem;
+        font-weight: 700;
+        color: #1d4ed8;
+        background: #eff6ff;
+        border: 1.5px solid #93c5fd;
+        border-radius: 6px;
+        padding: 3px 9px;
+        line-height: 1.5;
+        letter-spacing: .01em;
+        white-space: nowrap;
+    }
+
+    .desc-cell {
+        display: inline-block;
+        max-width: 280px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #0f172a;
+        font-weight: 500;
+    }
+
+    .empty-value { color: #94a3b8; }
+
+    .text-right  { text-align: right; }
+    .text-center { text-align: center; }
+    .mono { font-family: 'Consolas', 'SF Mono', monospace; }
+
+    /* UM — tag navy/azul */
+    .badge-um {
+        font-family: system-ui, sans-serif;
+        font-size: .63rem;
+        font-weight: 700;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        padding: 3px 7px;
+        border-radius: 5px;
+        background: #2563eb;
+        color: #ffffff;
+    }
+
+    /* Moneda */
+    .badge-moneda {
+        padding: 3px 9px;
+        border-radius: 5px;
+        font-size: .7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .badge-usd {
+        background: rgba(39,104,69,.12);
+        color: #276845;
+        border: 1px solid rgba(39,104,69,.2);
+    }
+    .badge-mxn {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+    }
+
+    /* Precio — monospace navy */
+    .dark-table .text-right.mono {
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-weight: 700;
+        color: #1e3a6e;
+        font-size: .9rem;
+    }
+
+    /* Action buttons */
+    .action-buttons {
+        display: flex;
+        gap: 6px;
+        justify-content: center;
+    }
+
+    .btn-action {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        font-size: 0.85rem;
+    }
+
+    .btn-edit {
+        background: rgba(30,58,110,.08);
+        border-color: rgba(30,58,110,.2);
+        color: var(--accent-primary);
+    }
+
+    .btn-edit:hover {
+        background: rgba(30,58,110,.15);
+        color: var(--accent-hover);
+    }
+
+    .btn-delete {
+        background: rgba(166,48,48,.08);
+        border-color: rgba(166,48,48,.2);
+        color: var(--accent-red);
+    }
+
+    .btn-delete:hover {
+        background: rgba(166,48,48,.15);
+        color: #7a1515;
+    }
+
+    /* Modal claro */
+    .modal-dark {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: var(--shadow-md);
+    }
+
+    .modal-dark .modal-header {
+        border-bottom: 1px solid var(--border-color);
+        padding: 18px 24px;
+        background: #f8fafd;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .modal-dark .modal-title {
+        color: var(--text-primary);
+        font-weight: 700;
+    }
+
+    .modal-dark .modal-body {
+        padding: 24px;
+    }
+
+    .modal-dark .modal-body p {
+        color: var(--text-muted);
+        margin-bottom: 16px;
+    }
+
+    .modal-material-info {
+        background: var(--accent-light);
+        border-radius: 8px;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+        border: 1px solid rgba(30,58,110,.15);
+    }
+
+    .modal-material-info strong {
+        color: var(--accent-primary);
+        font-family: monospace;
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    .modal-material-info span {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+
+    .modal-warning {
+        background: rgba(184,118,42,.08);
+        border: 1px solid rgba(184,118,42,.2);
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: #7a4c0a;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .modal-dark .modal-footer {
+        border-top: 1px solid var(--border-color);
+        padding: 14px 24px;
+        gap: 10px;
+        background: #f8fafd;
+        border-radius: 0 0 12px 12px;
+    }
+
+    .btn-modal {
+        padding: 9px 20px;
+        border-radius: 7px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all 0.18s;
+    }
+
+    .btn-cancel {
+        background: var(--bg-tertiary);
+        color: var(--text-muted);
+        border: 1px solid var(--border-color);
+    }
+
+    .btn-cancel:hover {
+        background: var(--border-light);
+        color: var(--text-primary);
+    }
+
+    .btn-confirm-delete {
+        background: var(--accent-red);
+        color: #ffffff;
+    }
+
+    .btn-confirm-delete:hover {
+        background: #7a1515;
+    }
+
+    /* Animations */
+    @@keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    /* Scrollbar */
+    .table-container {
+        max-height: 60vh;
+        overflow: auto;
+    }
+
+    .table-container::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .table-container::-webkit-scrollbar-track {
+        background: var(--bg-tertiary);
+    }
+
+    .table-container::-webkit-scrollbar-thumb {
+        background: var(--border-light);
+        border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb:hover {
+        background: #a8b5c8;
+    }
+
+    /* Pagination Info */
+    .pagination-info {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        margin-bottom: 12px;
+    }
+
+    /* Pagination */
+    .pagination-container {
+        margin-top: 20px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #ffffff;
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .pagination-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 14px;
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        transition: all 0.18s;
+        border: 1px solid transparent;
+    }
+
+    .pagination-btn:hover {
+        background: var(--accent-light);
+        color: var(--accent-primary);
+        border-color: var(--accent-primary);
+    }
+
+    .pagination-btn.disabled {
+        background: var(--bg-primary);
+        color: var(--text-dark);
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .pagination-numbers {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .page-number {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        color: var(--text-muted);
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+
+    .page-number:hover {
+        background: var(--accent-light);
+        color: var(--accent-primary);
+    }
+
+    .page-number.active {
+        background: var(--accent-primary);
+        color: #ffffff;
+        font-weight: 600;
+    }
+
+    .page-ellipsis {
+        color: var(--text-dark);
+        padding: 0 4px;
+    }
+
+    /* ── Modal editar ── */
+    .me-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+    .me-field { display: flex; flex-direction: column; gap: 6px; }
+    .me-full  { grid-column: 1 / -1; }
+    .me-label {
+        font-size: .72rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        font-weight: 600;
+    }
+    .me-input {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 7px;
+        padding: 9px 13px;
+        font-size: .9rem;
+        width: 100%;
+        outline: none;
+        transition: border-color .18s, box-shadow .18s;
+    }
+    .me-input:focus {
+        border-color: var(--accent-primary);
+        box-shadow: 0 0 0 3px rgba(30,58,110,.1);
+    }
+    .me-input option { background: #ffffff; }
+    .ac-salida-dropdown {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        max-height: 220px;
+        overflow-y: auto;
+        box-shadow: var(--shadow-md);
+    }
+    .ac-salida-item {
+        padding: 9px 14px; cursor: pointer; color: var(--text-secondary); font-size: .875rem;
+    }
+    .ac-salida-item:hover { background: var(--accent-light); color: var(--accent-primary); }
+</style>
+
+<script>
+    function abrirModalEditar(btn) {
+        const d = btn.dataset;
+        document.getElementById('meRowId').value            = d.rowId;
+        document.getElementById('meMarca').value            = d.marca || '';
+        document.getElementById('meCodFab').value           = d.codFab;
+        document.getElementById('meCodFabTitle').textContent = d.codFab;
+        document.getElementById('meDescripcion').value      = d.descripcion;
+        document.getElementById('meUm').value               = d.um;
+        document.getElementById('meProveedor').value        = d.proveedor;
+        document.getElementById('mePartida').value          = d.partida;
+        document.getElementById('mePu').value               = d.pu;
+        document.getElementById('meMoneda').value           = d.moneda || 'MXN';
+        document.getElementById('meCantActual').textContent = parseFloat(d.cant).toFixed(2);
+        document.getElementById('meCant').value             = parseFloat(d.cant).toFixed(2);
+        document.getElementById('meFac').value              = '';
+        document.getElementById('meNoPo').value             = '';
+        document.getElementById('meProyecto').value         = '';
+        // Cargar facturación y no_po desde entradas_inventario
+        fetch('?handler=NoPoYFacPorCodFab&codFab=' + encodeURIComponent(d.codFab))
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('meFac').value     = data.fac   || '';
+                document.getElementById('meNoPo').value    = data.no_po || '';
+            });
+        var modal = new bootstrap.Modal(document.getElementById('modalEditar'));
+        modal.show();
+        setTimeout(() => {
+            document.getElementById('meDescripcion').focus();
+            initAcNoPo();
+        }, 300);
+    }
+
+    function initAcNoPo() { /* legacy - ya no se usa */ }
+
+    let _acProyDrop = null, _acProyTimer = null;
+    function acProyectoCatalogo(inp) {
+        clearTimeout(_acProyTimer);
+        if (_acProyDrop) { _acProyDrop.remove(); _acProyDrop = null; }
+        const q = inp.value.trim();
+        if (q.length < 1) return;
+        _acProyTimer = setTimeout(() => {
+            fetch('?handler=SugProyecto&q=' + encodeURIComponent(q))
+                .then(r => r.json())
+                .then(list => {
+                    if (_acProyDrop) { _acProyDrop.remove(); _acProyDrop = null; }
+                    if (!list.length) return;
+                    const rect = inp.getBoundingClientRect();
+                    _acProyDrop = document.createElement('div');
+                    _acProyDrop.className = 'ac-salida-dropdown';
+                    _acProyDrop.style.cssText = `position:fixed;top:${rect.bottom}px;left:${rect.left}px;min-width:${rect.width}px;z-index:99999;`;
+                    list.forEach(item => {
+                        const d = document.createElement('div');
+                        d.className = 'ac-salida-item';
+                        d.style.cssText = 'display:flex;gap:12px;align-items:baseline;';
+                        const spanNum = document.createElement('span');
+                        spanNum.textContent = item.num;
+                        spanNum.style.cssText = 'min-width:60px;font-weight:600;flex-shrink:0;';
+                        const spanNombre = document.createElement('span');
+                        spanNombre.textContent = item.nombre;
+                        spanNombre.style.cssText = 'color:#6b7280;font-size:.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+                        d.appendChild(spanNum);
+                        d.appendChild(spanNombre);
+                        d.addEventListener('mousedown', e => {
+                            e.preventDefault();
+                            inp.value = item.num;
+                            _acProyDrop.remove(); _acProyDrop = null;
+                        });
+                        _acProyDrop.appendChild(d);
+                    });
+                    document.body.appendChild(_acProyDrop);
+                });
+        }, 250);
+    }
+    document.addEventListener('click', e => {
+        const inp = document.getElementById('meProyecto');
+        if (_acProyDrop && inp && !inp.contains(e.target)) { _acProyDrop.remove(); _acProyDrop = null; }
+    });
+
+    function confirmarEliminacion(codFab, descripcion) {
+        document.getElementById('modalCodFab').textContent = codFab;
+        document.getElementById('modalDescripcion').textContent = descripcion;
+
+        var form = document.getElementById('formEliminar');
+        form.action = '?handler=Eliminar&codFab=' + encodeURIComponent(codFab);
+
+        var modal = new bootstrap.Modal(document.getElementById('modalEliminar'));
+        modal.show();
+    }
+</script>

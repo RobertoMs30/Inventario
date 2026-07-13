@@ -1,0 +1,1349 @@
+@page "{id:int}"
+@model EditarCotizacionModel
+@{
+    ViewData["Title"] = "Editar Cotización";
+}
+
+<style>
+    .ncot-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1.5rem 1rem;
+    }
+    .ncot-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .ncot-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+    .ncot-title i { color: var(--accent-primary); }
+
+    .enc-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .enc-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    @@media (max-width: 900px) {
+        .enc-grid { grid-template-columns: 1fr 1fr; }
+        .enc-grid-2 { grid-template-columns: 1fr 1fr; }
+    }
+    @@media (max-width: 580px) {
+        .enc-grid { grid-template-columns: 1fr; }
+        .enc-grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .items-table-wrapper {
+        overflow-x: auto;
+        overflow-y: visible;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        border: 1px solid #c8d8f0;
+    }
+    .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1280px;
+    }
+    .items-table thead th {
+        background: #1e3a6e;
+        color: #a8c0e0;
+        font-size: .67rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .1em;
+        padding: 10px 12px;
+        border: none;
+        white-space: nowrap;
+    }
+    .items-table thead th:first-child { color: #6a90bc; }
+    .items-table tbody tr {
+        border-bottom: 1px solid #e4ecf9;
+        transition: background .12s;
+    }
+    .items-table tbody tr:nth-child(even) { background: #eef3ff; }
+    .items-table tbody tr:nth-child(odd)  { background: #ffffff; }
+    .items-table tbody tr:last-child { border-bottom: none; }
+    .items-table tbody tr:hover {
+        background: #dbeafe !important;
+        outline: 1.5px solid #93c5fd;
+        outline-offset: -1px;
+    }
+    .items-table td { padding: 7px 10px; vertical-align: middle; font-size: .9rem; color: #1b2a45; }
+    .no-item-cell {
+        text-align: center;
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .78rem;
+        color: #7ea8cc;
+        font-weight: 600;
+        width: 52px;
+        min-width: 52px;
+    }
+    .items-table input, .items-table select {
+        width: 100%;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 5px;
+        padding: .3rem .45rem;
+        font-size: .83rem;
+        outline: none;
+        transition: border-color .2s;
+        box-sizing: border-box;
+    }
+    .items-table input:focus, .items-table select:focus {
+        border-color: var(--accent-primary);
+        box-shadow: 0 0 0 2px rgba(30,58,110,.15);
+    }
+    .items-table input.field-total {
+        color: var(--accent-primary);
+        font-weight: 700;
+        font-family: monospace;
+    }
+    .col-no    { width: 52px; }
+    .col-desc  { min-width: 380px; }
+    .col-cant  { width: 80px; }
+    .col-um    { width: 80px; }
+    .col-marca { width: 120px; }
+    .col-mo    { width: 100px; }
+    .col-pu    { width: 100px; }
+    .col-total { width: 110px; }
+    .col-mon   { width: 78px; }
+    .col-te    { width: 130px; }
+    .col-del   { width: 42px; text-align: center; }
+
+    .btn-del-row {
+        background: rgba(239,68,68,.1);
+        border: 1px solid rgba(239,68,68,.3);
+        color: var(--accent-red);
+        border-radius: 5px;
+        padding: .3rem .5rem;
+        font-size: .85rem;
+        cursor: pointer;
+        line-height: 1;
+        transition: all .2s;
+    }
+    .btn-del-row:hover { background: rgba(239,68,68,.25); }
+
+    .btn-add-item {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .45rem 1rem;
+        background: rgba(30,58,110,.1);
+        border: 1px solid rgba(30,58,110,.35);
+        color: var(--accent-primary);
+        border-radius: 7px;
+        font-size: .85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .2s;
+    }
+    .btn-add-item:hover { background: rgba(30,58,110,.2); }
+
+    .actions-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+        margin-top: .5rem;
+    }
+
+    .required-star { color: var(--accent-red); }
+    .field-label { font-size: .78rem; color: var(--text-muted); margin-bottom: .25rem; }
+
+    /* Condiciones Comerciales — misma cabecera que la tabla */
+    .cond-card { padding: 0; margin-top: 1.5rem; overflow: hidden; border: 1px solid #c8d8f0; border-radius: 8px; }
+    .cond-card-header {
+        background: #1e3a6e;
+        color: #a8c0e0;
+        font-size: .67rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .1em;
+        padding: 10px 14px;
+    }
+    .cond-card-body { padding: 1rem; }
+
+    .ac-dropdown {
+        position: fixed;
+        background: var(--bg-secondary);
+        border: 1px solid var(--accent-primary);
+        border-radius: 6px;
+        box-shadow: 0 8px 32px rgba(0,0,0,.7);
+        z-index: 99999;
+        overflow-y: auto;
+        min-width: 380px;
+    }
+    .ac-item {
+        padding: .5rem .75rem;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(0,0,0,.03);
+        transition: background .15s;
+    }
+    .ac-item:last-child { border-bottom: none; }
+    .ac-item:hover, .ac-item.ac-active { background: rgba(30,58,110,.14); }
+    .ac-desc { color: var(--text-primary); font-size: .83rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ac-meta { color: var(--text-muted); font-size: .73rem; margin-top: .1rem; display: flex; gap: .6rem; flex-wrap: wrap; }
+    .ac-meta span { display: inline-flex; align-items: center; gap: .2rem; }
+    .ac-empty { padding: .65rem .75rem; color: var(--text-muted); font-size: .82rem; text-align: center; }
+    .ac-loading { padding: .6rem .75rem; color: var(--text-muted); font-size: .8rem; text-align: center; }
+    .fmt-option {
+        padding: .5rem .85rem;
+        font-size: .83rem;
+        cursor: pointer;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        transition: background .15s;
+    }
+    .fmt-option:hover { background: rgba(30,58,110,.1); }
+</style>
+
+<div class="ncot-container">
+    <div class="ncot-header">
+        <div class="ncot-title">
+            <i class="bi bi-pencil-square"></i>
+            Editar Cotización
+        </div>
+        <a href="/VerCotizacion/@Model.Form.Id" style="text-decoration:none;">
+            <span class="btn-outline-dark-custom" style="padding:.4rem .85rem;font-size:.85rem;display:inline-flex;align-items:center;gap:.35rem;">
+                <i class="bi bi-arrow-left"></i> Volver
+            </span>
+        </a>
+    </div>
+
+    @if (!ModelState.IsValid && !string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="alert-dark-error" style="padding:.75rem 1rem;border-radius:8px;margin-bottom:1.25rem;">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            @Model.ErrorMessage
+        </div>
+    }
+
+    <form method="post" id="formCotizacion">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="Form.Id"      value="@Model.Form.Id" />
+        <input type="hidden" name="Form.Formato" id="hidFormato" value="@Model.Form.Formato" />
+
+        <!-- ── ENCABEZADO ──────────────────────────────────── -->
+        <div class="card-dark" style="padding:1.25rem;margin-bottom:1.5rem;">
+            <div class="card-dark-header" style="margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border-color);font-size:.9rem;font-weight:600;">
+                <i class="bi bi-card-text me-2" style="color:var(--accent-primary);"></i>
+                Datos generales
+            </div>
+            <div class="enc-grid">
+                <div>
+                    <div class="field-label">Fecha <span class="required-star">*</span></div>
+                    <input type="date"
+                           name="Form.Fecha"
+                           value="@Model.Form.Fecha?.ToString("yyyy-MM-dd")"
+                           class="form-control" required />
+                </div>
+                <div style="position:relative;">
+                    <div class="field-label">Cliente <span class="required-star">*</span></div>
+                    <div style="position:relative;">
+                        <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;">
+                            <i class="bi bi-building"></i>
+                        </span>
+                        <input type="text"
+                               id="clienteInput"
+                               name="Form.Cliente"
+                               value="@Model.Form.Cliente"
+                               placeholder="Buscar cliente…"
+                               class="form-control"
+                               style="padding-left:2rem;padding-right:2.2rem;"
+                               autocomplete="off"
+                               maxlength="200" required />
+                        <button type="button" id="btnEmpresasArrow"
+                                onclick="toggleEmpresasDropdown()"
+                                title="Ver lista de empresas"
+                                style="position:absolute;right:0;top:0;bottom:0;width:2rem;background:transparent;border:none;border-left:1px solid var(--border-color);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:0 5px 5px 0;transition:background .15s;"
+                                onmouseenter="this.style.background='rgba(30,58,110,.1)'"
+                                onmouseleave="this.style.background='transparent'">
+                            <i class="bi bi-chevron-down" style="font-size:.75rem;"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <div class="field-label">Proyecto / Fase <span class="required-star">*</span></div>
+                    <input type="text"
+                           name="Form.Proyecto"
+                           value="@Model.Form.Proyecto"
+                           placeholder="Ej. Linea LCV4 — Fase 1"
+                           class="form-control"
+                           maxlength="300" required />
+                </div>
+            </div>
+            <div class="enc-grid-2">
+                <div>
+                    <div class="field-label">RFQ</div>
+                    <input type="text"
+                           name="Form.Rfq"
+                           value="@Model.Form.Rfq"
+                           placeholder="Ej. 3225"
+                           class="form-control"
+                           maxlength="100" />
+                </div>
+                <div>
+                    <div class="field-label">Descuento %</div>
+                    <input type="number"
+                           name="Form.DescuentoPct"
+                           value="@Model.Form.DescuentoPct"
+                           placeholder="0"
+                           class="form-control"
+                           min="0" max="100" step="0.01" />
+                </div>
+            </div>
+            <div style="padding-top:.75rem;border-top:1px solid var(--border-color);margin-top:.25rem;">
+                <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.6rem;">
+                    <i class="bi bi-person me-1" style="color:var(--accent-primary);"></i>Datos del solicitante
+                </div>
+                <div class="enc-grid-2">
+                    <div>
+                        <div class="field-label">Nombre del solicitante</div>
+                        <input type="text"
+                               name="Form.Solicitante"
+                               value="@Model.Form.Solicitante"
+                               placeholder="Nombre de quien solicita la cotización"
+                               class="form-control"
+                               maxlength="200" />
+                    </div>
+                    <div>
+                        <div class="field-label">Responsable de la cotización</div>
+                        <input type="text"
+                               name="Form.Responsable"
+                               value="@Model.Form.Responsable"
+                               placeholder="Nombre del responsable de TU EMPRESA"
+                               class="form-control"
+                               maxlength="200" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── ENCABEZADO FORMATO 2 (solo visible con Formato 2) ── -->
+        <div class="card-dark" id="cardFmt2" style="padding:1.25rem;margin-bottom:1.5rem;display:@(Model.Form.Formato == 2 ? "block" : "none");">
+            <div class="card-dark-header" style="margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border-color);font-size:.9rem;font-weight:600;">
+                <i class="bi bi-diagram-3 me-2" style="color:var(--accent-primary);"></i>
+                Datos adicionales — Formato 2
+            </div>
+            <div class="enc-grid-2">
+                <div>
+                    <div class="field-label">Localidad</div>
+                    <input type="text" name="Form.Localidad" id="inpLocalidad"
+                           value="@Model.Form.Localidad"
+                           class="form-control" placeholder="Ej. Monterrey, NL" maxlength="200" />
+                </div>
+                <div>
+                    <div class="field-label">No. Puertos</div>
+                    <input type="text" name="Form.NoPuertos" id="inpNoPuertos"
+                           value="@Model.Form.NoPuertos"
+                           class="form-control" placeholder="Ej. 24" maxlength="50" />
+                </div>
+            </div>
+            <div>
+                <div class="field-label">Título de sección</div>
+                <input type="text" name="Form.SeccionTitulo" id="inpSeccionTitulo"
+                       value="@Model.Form.SeccionTitulo"
+                       class="form-control" placeholder="Ej. CANALIZACION Y CABLEADO PARA NODO" maxlength="300" />
+            </div>
+
+            <!-- ── Widgets tipo de cambio ── -->
+            <div style="display:flex;gap:1rem;margin-top:1.25rem;flex-wrap:wrap;">
+                <div id="tcWidgetUsd" style="flex:1;min-width:200px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:10px;padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.25rem;">
+                    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);display:flex;align-items:center;gap:.4rem;">
+                        <i class="bi bi-currency-dollar" style="color:#22c55e;"></i> USD → MXN
+                    </div>
+                    <div style="font-size:1.5rem;font-weight:800;color:#22c55e;letter-spacing:-.02em;" id="tcValUsd">
+                        <span style="font-size:.82rem;color:var(--text-muted);font-weight:400;">cargando…</span>
+                    </div>
+                    <div style="font-size:.72rem;color:var(--text-muted);">1 dólar equivale a</div>
+                    <div style="font-size:.68rem;color:var(--text-muted);margin-top:.15rem;" id="tcFechaUsd"></div>
+                </div>
+                <div id="tcWidgetMxn" style="flex:1;min-width:200px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:10px;padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.25rem;">
+                    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);display:flex;align-items:center;gap:.4rem;">
+                        <i class="bi bi-cash-coin" style="color:#3b82f6;"></i> MXN → USD
+                    </div>
+                    <div style="font-size:1.5rem;font-weight:800;color:#3b82f6;letter-spacing:-.02em;" id="tcValMxn">
+                        <span style="font-size:.82rem;color:var(--text-muted);font-weight:400;">cargando…</span>
+                    </div>
+                    <div style="font-size:.72rem;color:var(--text-muted);">1 peso equivale a</div>
+                    <div style="font-size:.68rem;color:var(--text-muted);margin-top:.15rem;" id="tcFechaMxn"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── TABLA DE ÍTEMS ──────────────────────────────── -->
+        <div class="card-dark" style="padding:1.25rem;">
+            <div class="card-dark-header" style="margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border-color);font-size:.9rem;font-weight:600;display:flex;justify-content:space-between;align-items:center;">
+                <span><i class="bi bi-list-ul me-2" style="color:var(--accent-primary);"></i>Ítems de la cotización</span>
+                <div style="display:flex;align-items:center;gap:.5rem;">
+                    <button type="button" id="btnFetchTC" onclick="fetchTC()"
+                            title="Obtener tipo de cambio USD → MXN de hoy"
+                            style="display:none;align-items:center;gap:.4rem;padding:.35rem .75rem;background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.4);color:#b45309;border-radius:6px;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;">
+                        <i class="bi bi-currency-exchange"></i> TC hoy
+                    </button>
+                    <a href="/EntradaDesdeCotizacion/@Model.Form.Id" style="text-decoration:none;">
+                        <span style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.35);color:#16a34a;border-radius:7px;padding:.3rem .75rem;font-size:.82rem;display:inline-flex;align-items:center;gap:.35rem;font-weight:600;transition:all .2s;"
+                              onmouseover="this.style.background='rgba(34,197,94,.22)'"
+                              onmouseout="this.style.background='rgba(34,197,94,.1)'">
+                            <i class="bi bi-box-arrow-in-down"></i> Dar entrada de material
+                        </span>
+                    </a>
+                    <div style="position:relative;">
+                        <button type="button" id="btnFormato" onclick="toggleFormatoMenu()"
+                                style="display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .75rem;background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-muted);border-radius:6px;font-size:.82rem;cursor:pointer;">
+                            <i class="bi bi-table"></i>
+                            <span id="lblFormato">Formato 1</span>
+                            <i class="bi bi-chevron-down" style="font-size:.7rem;"></i>
+                        </button>
+                        <div id="formatoMenu" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:7px;box-shadow:0 8px 24px rgba(0,0,0,.6);z-index:9999;min-width:140px;">
+                            <div class="fmt-option" onclick="setFormato(1)">
+                                <i class="bi bi-check2" id="checkFmt1" style="color:var(--accent-primary);visibility:visible;"></i>
+                                Formato 1
+                            </div>
+                            <div class="fmt-option" onclick="setFormato(2)">
+                                <i class="bi bi-check2" id="checkFmt2" style="visibility:hidden;"></i>
+                                Formato 2
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-add-item" onclick="addItem()">
+                        <i class="bi bi-plus-lg"></i> Agregar ítem
+                    </button>
+                    <button type="button" class="btn-add-item" onclick="addPartida()"
+                            style="background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.35);color:#818cf8;">
+                        <i class="bi bi-bookmark-plus"></i> Agregar Partida
+                    </button>
+                </div>
+            </div>
+
+            <div class="items-table-wrapper">
+                <table class="items-table" id="itemsTable">
+                    <thead>
+                        <tr>
+                            <th class="col-no">Ítem</th>
+                            <th class="col-desc">Descripción material/equipo <span class="required-star">*</span></th>
+                            <th class="col-cant">Cantidad <span class="required-star">*</span></th>
+                            <th class="col-um">Unidad <span class="required-star">*</span></th>
+                            <th class="col-marca">Marca</th>
+                            <th class="col-mo">Mano de obra</th>
+                            <th class="col-pu">P. Unitario</th>
+                            <th class="col-total">Total</th>
+                            <th class="col-del"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsBody">
+                        <!-- Las filas se cargan con JS desde los datos existentes -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="hintFormula" style="font-size:.78rem;color:var(--text-muted);margin-top:.4rem;display:@(Model.Form.Formato == 2 ? "none" : "block");">
+                <i class="bi bi-info-circle me-1"></i>
+                Total = (Precio Unitario + Mano de Obra) × Cantidad
+            </div>
+
+            <!-- Condiciones Comerciales -->
+            <div class="cond-card">
+                <div class="cond-card-header">Condiciones Comerciales</div>
+                <div class="cond-card-body">
+                    <textarea name="Form.CondicionesComerciales" id="txtCondiciones"
+                              rows="7" class="form-control"
+                              style="resize:vertical;font-size:.83rem;width:100%;">@Model.Form.CondicionesComerciales</textarea>
+                </div>
+            </div>
+
+            <div class="actions-bar">
+                <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+                    <button type="button" class="btn-add-item" onclick="addItem()">
+                        <i class="bi bi-plus-lg"></i> Agregar ítem
+                    </button>
+                    <button type="button" class="btn-add-item" onclick="addPartida()"
+                            style="background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.35);color:#818cf8;">
+                        <i class="bi bi-bookmark-plus"></i> Agregar Partida
+                    </button>
+                </div>
+                <button type="submit" class="btn-accent" style="padding:.55rem 1.5rem;font-size:.95rem;">
+                    <i class="bi bi-floppy me-1"></i> Guardar cambios
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    let itemCount = 0;
+    let currentFormat = 1;
+
+    // Datos existentes inyectados desde el servidor
+    const existingItems = @Html.Raw(Model.ItemsJson);
+
+    // ── Textos por defecto de Condiciones Comerciales ────────
+    const DEFAULT_COND_FMT1 =
+`Los precios indicados están expresados en dólares americanos y no incluyen el IVA del 16%.
+Vigencia de la Propuesta: Esta propuesta tiene una validez por los siguientes 60 días.
+Forma de Pago: 30% de Anticipo y resto a plazo comercial una vez recibido el servicio prestado.
+Garantía de Materiales y Mano de Obra: Los materiales ofrecidos cuentan con un año de garantía contra defectos de fábrica, y un año de garantía de mano de obra por fallas de instalación, no incluye daños de usuarios o intervenciones de otro contratista.
+NOTA: La presente cotización solamente considera los conceptos solicitados, cualquier concepto adicional se cobrará por separado.`;
+
+    const DEFAULT_COND_FMT2 =
+`Los precios indicados están expresados en dólares americanos y no incluyen el IVA del 16%.
+Vigencia de la Propuesta: Esta propuesta tiene una validez por los siguientes 30 días.
+Forma de Pago: 45 días una vez recibido el servicio prestado.
+Horarios de realización de trabajos: abierto a disponibilidad de horarios de cliente.
+El costo de la plataforma de elevación esta considerado para 1 fin de semana.
+NOTA: La presente cotización solamente considera los conceptos solicitados, cualquier concepto adicional, se cobrara por separado.`;
+
+    // ── Selector de formato ──────────────────────────────────
+    function toggleFormatoMenu() {
+        const menu = document.getElementById('formatoMenu');
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function setFormato(fmt) {
+        currentFormat = fmt;
+        document.getElementById('lblFormato').textContent = 'Formato ' + fmt;
+        document.getElementById('checkFmt1').style.visibility = fmt === 1 ? 'visible' : 'hidden';
+        document.getElementById('checkFmt2').style.visibility = fmt === 2 ? 'visible' : 'hidden';
+        document.getElementById('formatoMenu').style.display = 'none';
+        document.getElementById('hidFormato').value = fmt;
+        document.getElementById('cardFmt2').style.display = fmt === 2 ? 'block' : 'none';
+        document.getElementById('hintFormula').style.display = fmt === 1 ? 'block' : 'none';
+        document.getElementById('btnFetchTC').style.display = fmt === 2 ? 'inline-flex' : 'none';
+        if (fmt === 2) loadTcWidgets();
+
+        document.querySelector('.items-table').style.minWidth = fmt === 2 ? '1900px' : '1280px';
+        document.getElementById('itemsBody').innerHTML = '';
+        itemCount = 0;
+        renderThead();
+        addItem(); // siempre hay al menos un ítem al cambiar formato
+
+        // Cambiar texto por defecto de condiciones si no fue editado manualmente
+        const txtCond    = document.getElementById('txtCondiciones');
+        const oldDefault = fmt === 2 ? DEFAULT_COND_FMT1 : DEFAULT_COND_FMT2;
+        const newDefault = fmt === 2 ? DEFAULT_COND_FMT2 : DEFAULT_COND_FMT1;
+        if (txtCond.value.trim() === '' || txtCond.value.trim() === oldDefault.trim())
+            txtCond.value = newDefault;
+    }
+
+    document.addEventListener('click', e => {
+        if (!document.getElementById('btnFormato')?.contains(e.target))
+            document.getElementById('formatoMenu').style.display = 'none';
+    });
+
+    function renderThead() {
+        const tr = document.querySelector('#itemsTable thead tr');
+        if (currentFormat === 1) {
+            tr.innerHTML = `
+                <th class="col-no">Ítem</th>
+                <th class="col-desc">Descripción material/equipo <span class="required-star">*</span></th>
+                <th class="col-cant">Cantidad <span class="required-star">*</span></th>
+                <th class="col-um">Unidad <span class="required-star">*</span></th>
+                <th class="col-marca">Marca</th>
+                <th class="col-mo">Mano de obra</th>
+                <th class="col-pu">P. Unitario</th>
+                <th class="col-total">Total</th>
+                <th class="col-del"></th>`;
+        } else {
+            tr.innerHTML = `
+                <th class="col-no">Ítem</th>
+                <th class="col-desc">Descripción <span class="required-star">*</span></th>
+                <th style="width:65px">Cant <span class="required-star">*</span></th>
+                <th style="width:65px">Unidad <span class="required-star">*</span></th>
+                <th style="width:80px">P-USD</th>
+                <th style="width:80px">P-MN</th>
+                <th style="width:80px">%V-USD</th>
+                <th style="width:80px">%V-MN</th>
+                <th style="width:80px">MO-USD</th>
+                <th style="width:80px">MO-MN</th>
+                <th style="width:90px">Imp-USD</th>
+                <th style="width:90px">Imp-MN</th>
+                <th style="width:70px">TC</th>
+                <th style="width:70px">%Venta</th>
+                <th style="width:70px">%MO</th>
+                <th style="width:80px">UTILIDAD</th>
+                <th style="width:80px">$$REAL</th>
+                <th style="width:70px">UR</th>
+                <th class="col-del"></th>`;
+        }
+    }
+
+    function buildRow(idx, data) {
+        const noItem = data ? data.noItem : (document.getElementById('itemsBody').rows.length + 1) * 10;
+        const tr = document.createElement('tr');
+        tr.dataset.idx = idx;
+        const d = data || {};
+
+        if (currentFormat === 1) {
+            tr.innerHTML = `
+                <td class="no-item-cell">
+                    <span class="no-item-label">${noItem}</span>
+                    <input type="hidden" name="Form.Items[${idx}].NoItem" value="${noItem}" />
+                    <input type="hidden" name="Form.Items[${idx}].Moneda" value="${(d.moneda||'MXN').toUpperCase()}" />
+                    <input type="hidden" name="Form.Items[${idx}].TiempoEntrega" value="${escHtml(d.tiempoEntrega||'')}" />
+                </td>
+                <td class="col-desc">
+                    <input type="text"
+                           name="Form.Items[${idx}].Descripcion"
+                           value="${escHtml(d.descripcion||'')}"
+                           class="field-desc-input"
+                           placeholder="Descripción del material o equipo"
+                           autocomplete="off"
+                           maxlength="500" required />
+                </td>
+                <td class="col-cant">
+                    <input type="number"
+                           name="Form.Items[${idx}].Cantidad"
+                           value="${d.cantidad||0}"
+                           min="0" step="0.01"
+                           oninput="calcularTotal(this.closest('tr'))" />
+                </td>
+                <td class="col-um">
+                    <input type="text"
+                           name="Form.Items[${idx}].Unidad"
+                           value="${escHtml(d.unidad||'')}"
+                           placeholder="PZA"
+                           maxlength="50" required />
+                </td>
+                <td class="col-marca">
+                    <input type="text"
+                           name="Form.Items[${idx}].Marca"
+                           value="${escHtml(d.marca||'')}"
+                           placeholder="—"
+                           maxlength="200" />
+                </td>
+                <td class="col-mo">
+                    <input type="number"
+                           name="Form.Items[${idx}].ManoObra"
+                           value="${d.manoObra||0}"
+                           min="0" step="0.01"
+                           oninput="calcularTotal(this.closest('tr'))" />
+                </td>
+                <td class="col-pu">
+                    <input type="number"
+                           name="Form.Items[${idx}].PrecioUnitario"
+                           value="${d.precioUnitario||0}"
+                           min="0" step="0.01"
+                           oninput="calcularTotal(this.closest('tr'))" />
+                </td>
+                <td class="col-total">
+                    <input type="number"
+                           name="Form.Items[${idx}].Total"
+                           value="${d.total||0}"
+                           class="field-total"
+                           min="0" step="0.01" />
+                </td>
+                <td class="col-del">
+                    <button type="button" class="btn-del-row" onclick="removeItem(this)" title="Eliminar fila">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </td>`;
+        } else {
+            const costoUsd = d.costoUsd ?? 0;
+            const tc       = d.tc       ?? 0;
+            const pctVenta = d.pctVenta ?? 0;
+            const pctMo    = d.pctMo    ?? 0;
+            const cant     = d.cantidad ?? 0;
+            const pMn      = costoUsd * tc;
+            const vUsd     = costoUsd * pctVenta;
+            const vMn      = pMn * pctVenta;
+            const moUsd    = (costoUsd + vUsd) * pctMo;
+            const moMn     = (pMn + vMn) * pctMo;
+            const impUsd   = costoUsd + vUsd + moUsd;
+            const impMn    = pMn + vMn + moMn;
+            const total    = impUsd * cant;
+            const utilidad = (vMn + moMn) * cant;
+            const real     = costoUsd * cant;
+            const ur       = (impUsd - costoUsd) * cant;
+
+            tr.innerHTML = `
+                <td class="no-item-cell">
+                    <span class="no-item-label">${noItem}</span>
+                    <input type="hidden" name="Form.Items[${idx}].NoItem"        value="${noItem}" />
+                    <input type="hidden" name="Form.Items[${idx}].Moneda"        value="USD" />
+                    <input type="hidden" name="Form.Items[${idx}].Marca"         value="" />
+                    <input type="hidden" name="Form.Items[${idx}].TiempoEntrega" value="" />
+                </td>
+                <td class="col-desc">
+                    <input type="text" name="Form.Items[${idx}].Descripcion"
+                           value="${escHtml(d.descripcion||'')}"
+                           class="field-desc-input" placeholder="Descripción"
+                           autocomplete="off" maxlength="500" required />
+                </td>
+                <td><input type="number" name="Form.Items[${idx}].Cantidad"
+                           value="${cant}" min="0" step="0.01" style="width:60px"
+                           oninput="recalcF2(this.closest('tr'))" required /></td>
+                <td><input type="text" name="Form.Items[${idx}].Unidad"
+                           value="${escHtml(d.unidad||'')}" placeholder="PZA"
+                           style="width:60px" maxlength="50" required /></td>
+                <td><input type="number" class="f2-pusd" name="Form.Items[${idx}].CostoUsd"
+                           value="${costoUsd}" min="0" step="0.0001" style="width:75px"
+                           oninput="onPusdChange(this.closest('tr'))"
+                           title="Precio en dólares — escribe aquí para calcular P-MN" /></td>
+                <td><input type="number" class="f2-pmn"  value="${pMn.toFixed(4)}"  step="0.0001" style="width:75px"
+                           oninput="onPmnChange(this.closest('tr'))"
+                           title="Precio en pesos — escribe aquí para calcular P-USD" /></td>
+                <td><input type="number" class="f2-vusd" value="${vUsd.toFixed(4)}"  step="0.0001" style="width:75px" oninput="this.dataset.manual='1'" /></td>
+                <td><input type="number" class="f2-vmn"  value="${vMn.toFixed(4)}"   step="0.0001" style="width:75px" oninput="this.dataset.manual='1'" /></td>
+                <td><input type="number" class="f2-mousd" name="Form.Items[${idx}].ManoObra"
+                           value="${moUsd.toFixed(4)}" step="0.0001"
+                           style="width:75px;background:rgba(30,58,110,.08);color:var(--text-muted)"
+                           readonly /></td>
+                <td><input type="number" class="f2-momn"  value="${moMn.toFixed(4)}"  step="0.0001" style="width:75px" oninput="this.dataset.manual='1'" /></td>
+                <td><input type="number" class="f2-impusd" name="Form.Items[${idx}].PrecioUnitario"
+                           value="${impUsd.toFixed(4)}"
+                           style="width:85px;color:var(--accent-primary);font-weight:700;background:rgba(30,58,110,.08)"
+                           readonly /></td>
+                <td><input type="number" class="f2-impmn"  value="${impMn.toFixed(4)}"  step="0.0001" style="width:85px;color:var(--accent-primary)" oninput="this.dataset.manual='1'" /></td>
+                <td><input type="number" class="f2-tc" name="Form.Items[${idx}].Tc"
+                           value="${tc}" min="0" step="0.0001" style="width:65px"
+                           oninput="recalcF2(this.closest('tr'))" /></td>
+                <td><input type="number" class="f2-pctventa" name="Form.Items[${idx}].PctVenta"
+                           value="${pctVenta}" min="0" step="0.0001" style="width:65px"
+                           oninput="recalcF2(this.closest('tr'))" /></td>
+                <td><input type="number" class="f2-pctmo" name="Form.Items[${idx}].PctMo"
+                           value="${pctMo}" min="0" step="0.0001" style="width:65px"
+                           oninput="recalcF2(this.closest('tr'))" /></td>
+                <td><input type="number" class="f2-utilidad" value="${utilidad.toFixed(4)}" step="0.0001" style="width:75px;background:rgba(30,58,110,.08);color:var(--text-muted)" readonly /></td>
+                <td><input type="number" class="f2-real"     value="${real.toFixed(4)}"     step="0.0001" style="width:75px;background:rgba(30,58,110,.08);color:var(--text-muted)" readonly /></td>
+                <td><input type="number" class="f2-ur"       value="${ur.toFixed(4)}"       step="0.0001" style="width:65px;background:rgba(30,58,110,.08);color:var(--text-muted)" readonly /></td>
+                <td><input type="hidden" name="Form.Items[${idx}].Total" class="f2-total" value="${total.toFixed(4)}" />
+                    <button type="button" class="btn-del-row" onclick="removeItem(this)" title="Eliminar fila">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </td>`;
+
+            setTimeout(() => recalcF2(tr), 0);
+        }
+
+        return tr;
+    }
+
+    // ── Widgets de tipo de cambio ─────────────────────────────
+    let tcWidgetsLoaded = false;
+    async function loadTcWidgets() {
+        if (tcWidgetsLoaded) return;
+        try {
+            const resp = await fetch('/EditarCotizacion?handler=TipoCambio',
+                { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await resp.json();
+            if (!data.ok) return;
+
+            const tc    = parseFloat(data.tc);
+            const inv   = 1 / tc;
+            const fecha = new Date().toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric' });
+
+            document.getElementById('tcValUsd').textContent   = `$${tc.toFixed(4)} MXN`;
+            document.getElementById('tcFechaUsd').textContent = `Fuente: Banxico FIX · ${fecha}`;
+            document.getElementById('tcValMxn').textContent   = `$${inv.toFixed(6)} USD`;
+            document.getElementById('tcFechaMxn').textContent = `Fuente: Banxico FIX · ${fecha}`;
+
+            tcWidgetsLoaded = true;
+        } catch { /* silencioso */ }
+    }
+
+    // ── Tipo de cambio USD/MXN (Banxico FIX) ─────────────────
+    async function fetchTC() {
+        const btn = document.getElementById('btnFetchTC');
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Consultando Banxico…';
+        try {
+            const resp = await fetch('/EditarCotizacion?handler=TipoCambio',
+                { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await resp.json();
+            if (!data.ok) throw new Error(data.error || 'sin datos');
+
+            const tc = parseFloat(data.tc);
+
+            // Aplicar a todas las filas de Formato 2
+            document.querySelectorAll('#itemsBody tr:not([data-is-partida="1"]) .f2-tc').forEach(inp => {
+                inp.value = tc.toFixed(4);
+                recalcF2(inp.closest('tr'));
+            });
+
+            // Actualizar widgets
+            const inv   = 1 / tc;
+            const fecha = new Date().toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric' });
+            document.getElementById('tcValUsd').textContent   = `$${tc.toFixed(4)} MXN`;
+            document.getElementById('tcFechaUsd').textContent = `Fuente: Banxico FIX · ${fecha}`;
+            document.getElementById('tcValMxn').textContent   = `$${inv.toFixed(6)} USD`;
+            document.getElementById('tcFechaMxn').textContent = `Fuente: Banxico FIX · ${fecha}`;
+            tcWidgetsLoaded = true;
+
+            btn.innerHTML = `<i class="bi bi-check2-circle"></i> TC FIX: $${tc.toFixed(2)}`;
+            setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 4000);
+        } catch (err) {
+            btn.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Error Banxico';
+            setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2500);
+        }
+    }
+
+    // P-USD editado → limpiar flag de P-MN y recalcular
+    function onPusdChange(row) {
+        const pMnEl = row.querySelector('.f2-pmn');
+        if (pMnEl) delete pMnEl.dataset.manual;
+        recalcF2(row);
+    }
+
+    // P-MN editado → calcular P-USD = P-MN ÷ TC, luego recalcular todo
+    function onPmnChange(row) {
+        const pMnEl  = row.querySelector('.f2-pmn');
+        const tcEl   = row.querySelector('.f2-tc');
+        const pUsdEl = row.querySelector('.f2-pusd');
+        if (pMnEl) pMnEl.dataset.manual = '1';
+        const pMn = parseFloat(pMnEl?.value) || 0;
+        const tc  = parseFloat(tcEl?.value)  || 0;
+        if (tc > 0 && pUsdEl) pUsdEl.value = (pMn / tc).toFixed(4);
+        recalcF2(row);
+    }
+
+    function recalcF2(row) {
+        const g  = cls => { const el = row.querySelector('.' + cls); return el ? (parseFloat(el.value) || 0) : 0; };
+        // s(): respeta edición manual; sw(): siempre sobreescribe (campo calculado)
+        const s  = (cls, v) => { const el = row.querySelector('.' + cls); if (!el || el.dataset.manual === '1') return; el.value = v; };
+        const sw = (cls, v) => { const el = row.querySelector('.' + cls); if (el) el.value = v; };
+
+        const pUsd  = g('f2-pusd');
+        const tc    = g('f2-tc');
+        const pctV  = g('f2-pctventa');
+        const pctMo = g('f2-pctmo');
+        const cant  = parseFloat(row.querySelector('input[name*="Cantidad"]')?.value) || 0;
+
+        // Fórmulas idénticas al Excel de referencia
+        const pMn    = pUsd * tc;                        // P-MN   = P-USD × TC
+        const vUsd   = pUsd * pctV;                      // %V-USD = P-USD × %Venta
+        const vMn    = pMn  * pctV;                      // %V-MN  = P-MN  × %Venta
+        const moUsd  = (pUsd + vUsd) * pctMo;            // MO-USD = (P-USD + %V-USD) × %MO
+        const moMn   = (pMn  + vMn)  * pctMo;            // MO-MN  = (P-MN  + %V-MN)  × %MO
+        const impUsd = pUsd + vUsd + moUsd;              // Imp-USD = P-USD + %V-USD + MO-USD
+        const impMn  = pMn  + vMn  + moMn;              // Imp-MN  = P-MN  + %V-MN  + MO-MN
+        const total    = impUsd * cant;
+        const utilidad = (vMn + moMn) * cant;            // UTILIDAD = (%V-MN + MO-MN) × Cant
+        const real     = pUsd * cant;                    // $REAL   = P-USD × Cant
+        const ur       = (impUsd - pUsd) * cant;         // UR      = (Imp-USD − P-USD) × Cant
+
+        s ('f2-pmn',     pMn.toFixed(4));
+        s ('f2-vusd',    vUsd.toFixed(4));
+        s ('f2-vmn',     vMn.toFixed(4));
+        sw('f2-mousd',   moUsd.toFixed(4));
+        s ('f2-momn',    moMn.toFixed(4));
+        sw('f2-impusd',  impUsd.toFixed(4));
+        s ('f2-impmn',   impMn.toFixed(4));
+        sw('f2-utilidad', utilidad.toFixed(4));
+        sw('f2-real',     real.toFixed(4));
+        sw('f2-ur',       ur.toFixed(4));
+        sw('f2-total',    total.toFixed(4));
+    }
+
+    function addItem(data) {
+        const tbody = document.getElementById('itemsBody');
+        const idx   = itemCount++;
+        const tr    = buildRow(idx, data || null);
+        tbody.appendChild(tr);
+        renumberItems();
+
+        const descInput = tr.querySelector('.field-desc-input');
+        initAutocomplete(descInput, tr);
+
+        if (!data) descInput.focus();
+    }
+
+    function removeItem(btn) {
+        btn.closest('tr').remove();
+        renumberItems();
+    }
+
+    function renumberItems() {
+        let itemNum = 0;
+        document.querySelectorAll('#itemsBody tr').forEach(tr => {
+            const hidden = tr.querySelector('input[name*="NoItem"]');
+            if (tr.dataset.isPartida === '1') {
+                if (hidden) hidden.value = 0;
+                return;
+            }
+            itemNum++;
+            const noItem = itemNum * 10;
+            const label  = tr.querySelector('.no-item-label');
+            if (label)  label.textContent = noItem;
+            if (hidden) hidden.value = noItem;
+        });
+    }
+
+    // ── Partidas (encabezados de sección) ────────────────────
+    function buildPartidaRow(idx, data) {
+        const d    = data || {};
+        const tr   = document.createElement('tr');
+        tr.dataset.isPartida = '1';
+        const cols = currentFormat === 1 ? 8 : 18;
+
+        tr.innerHTML = `
+            <td colspan="${cols}" style="background:#1e3a6e;padding:0;border-bottom:1px solid #2a5298;">
+                <div style="display:flex;align-items:center;gap:.6rem;padding:7px 12px;">
+                    <i class="bi bi-bookmark-fill" style="color:#6a90bc;font-size:.8rem;flex-shrink:0;"></i>
+                    <input type="text"
+                           name="Form.Items[${idx}].Descripcion"
+                           value="${escHtml(d.descripcion || '')}"
+                           placeholder="Nombre de la partida… (ej. FASE 1 – Línea LCV4)"
+                           style="flex:1;background:transparent;border:none;color:#c8dcf8;font-weight:700;font-size:.85rem;outline:none;padding:0;min-width:200px;" />
+                    <input type="hidden" name="Form.Items[${idx}].Marca"          value="__PARTIDA__" />
+                    <input type="hidden" name="Form.Items[${idx}].Cantidad"       value="1" />
+                    <input type="hidden" name="Form.Items[${idx}].Unidad"         value="-" />
+                    <input type="hidden" name="Form.Items[${idx}].Moneda"         value="MXN" />
+                    <input type="hidden" name="Form.Items[${idx}].ManoObra"       value="0" />
+                    <input type="hidden" name="Form.Items[${idx}].PrecioUnitario" value="0" />
+                    <input type="hidden" name="Form.Items[${idx}].Total"          value="0" />
+                    <input type="hidden" name="Form.Items[${idx}].NoItem"         value="0" />
+                </div>
+            </td>
+            <td style="background:#1e3a6e;text-align:center;border-bottom:1px solid #2a5298;padding:7px 5px;">
+                <button type="button" class="btn-del-row" onclick="removeItem(this)" title="Eliminar partida">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </td>`;
+        return tr;
+    }
+
+    function addPartida(data) {
+        const idx = itemCount++;
+        const tr  = buildPartidaRow(idx, data || null);
+        document.getElementById('itemsBody').appendChild(tr);
+        renumberItems();
+        if (!data) tr.querySelector('input[type="text"]').focus();
+    }
+
+    function calcularTotal(row) {
+        const cant  = parseFloat(row.querySelector('input[name*="Cantidad"]').value)       || 0;
+        const mo    = parseFloat(row.querySelector('input[name*="ManoObra"]').value)        || 0;
+        const pu    = parseFloat(row.querySelector('input[name*="PrecioUnitario"]').value)  || 0;
+        row.querySelector('input[name*="Total"]').value = ((pu + mo) * cant).toFixed(2);
+    }
+
+    function escHtml(s) {
+        return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Cargar thead e ítems existentes al iniciar
+    document.addEventListener('DOMContentLoaded', () => {
+        // Si el registro guardado es Formato 2, iniciar en Formato 2
+        const savedFormat = parseInt(document.getElementById('hidFormato').value) || 1;
+        if (savedFormat === 2) {
+            currentFormat = 2;
+            document.getElementById('lblFormato').textContent = 'Formato 2';
+            document.getElementById('checkFmt1').style.visibility = 'hidden';
+            document.getElementById('checkFmt2').style.visibility = 'visible';
+            document.querySelector('.items-table').style.minWidth = '1900px';
+            document.getElementById('btnFetchTC').style.display = 'inline-flex';
+            loadTcWidgets();
+        }
+        renderThead();
+        if (existingItems && existingItems.length > 0) {
+            existingItems.forEach(item => {
+                if (item.marca === '__PARTIDA__') addPartida(item);
+                else addItem(item);
+            });
+        } else {
+            addItem();
+        }
+        // Si condiciones vacías (cotización antigua), pre-llenar con el default del formato
+        const txtCond = document.getElementById('txtCondiciones');
+        if (!txtCond.value.trim())
+            txtCond.value = savedFormat === 2 ? DEFAULT_COND_FMT2 : DEFAULT_COND_FMT1;
+    });
+
+    document.getElementById('formCotizacion').addEventListener('submit', function (e) {
+        const rows = document.querySelectorAll('#itemsBody tr:not([data-is-partida="1"])');
+        if (rows.length === 0) {
+            e.preventDefault();
+            alert('Debe agregar al menos un ítem a la cotización.');
+        }
+    });
+
+    // ── AUTOCOMPLETE CLIENTE ──────────────────────────────────
+    (function initClienteAutocomplete() {
+        const input = document.getElementById('clienteInput');
+        if (!input) return;
+
+        let dropdown = null, activeIdx = -1, lastResults = [];
+
+        function escHtmlAc(s) {
+            return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        function positionDropdown() {
+            if (!dropdown) return;
+            const rect = input.getBoundingClientRect();
+            const w = Math.max(rect.width, 260);
+            dropdown.style.width = w + 'px';
+            let left = rect.left;
+            if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+            dropdown.style.left = left + 'px';
+            const spaceBelow = window.innerHeight - rect.bottom - 4;
+            const spaceAbove = rect.top - 4;
+            if (spaceBelow >= 100) {
+                dropdown.style.top = (rect.bottom + 4) + 'px';
+                dropdown.style.bottom = 'auto';
+                dropdown.style.maxHeight = Math.min(280, spaceBelow) + 'px';
+            } else {
+                dropdown.style.top = 'auto';
+                dropdown.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+                dropdown.style.maxHeight = Math.min(280, spaceAbove) + 'px';
+            }
+        }
+
+        function closeDropdown() { if (dropdown) { dropdown.remove(); dropdown = null; } activeIdx = -1; }
+
+        function setActive(idx) {
+            if (!dropdown) return;
+            const items = dropdown.querySelectorAll('.ac-item');
+            items.forEach(el => el.classList.remove('ac-active'));
+            if (idx >= 0 && idx < items.length) { items[idx].classList.add('ac-active'); items[idx].scrollIntoView({ block: 'nearest' }); }
+            activeIdx = idx;
+        }
+
+        function selectCliente(idx) {
+            const item = lastResults[idx];
+            if (!item) return;
+            input.value = item.nombre;
+            closeDropdown();
+        }
+
+        function showDropdown(items) {
+            closeDropdown(); lastResults = items; activeIdx = -1;
+            dropdown = document.createElement('div');
+            dropdown.className = 'ac-dropdown';
+            dropdown.style.cssText = 'position:fixed;z-index:99999;overflow-y:auto;';
+            if (items.length === 0) {
+                dropdown.innerHTML = '<div class="ac-empty"><i class="bi bi-search me-1"></i>Sin resultados</div>';
+            } else {
+                items.forEach((item, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'ac-item';
+                    div.innerHTML = `<div class="ac-desc"><i class="bi bi-building me-1" style="color:var(--accent-primary);font-size:.8rem;"></i>${escHtmlAc(item.nombre)}</div>`;
+                    div.addEventListener('mousedown', e => { e.preventDefault(); selectCliente(i); });
+                    dropdown.appendChild(div);
+                });
+            }
+            document.body.appendChild(dropdown);
+            positionDropdown();
+        }
+
+        window.addEventListener('scroll', () => { if (dropdown) positionDropdown(); }, { passive: true });
+        window.addEventListener('resize', () => { if (dropdown) positionDropdown(); }, { passive: true });
+
+        const doSearch = debounce(async (q) => {
+            if (q.length < 1) { closeDropdown(); return; }
+            closeDropdown();
+            dropdown = document.createElement('div');
+            dropdown.className = 'ac-dropdown';
+            dropdown.style.cssText = 'position:fixed;z-index:99999;overflow-y:auto;';
+            dropdown.innerHTML = '<div class="ac-loading"><i class="bi bi-hourglass-split me-1"></i>Buscando…</div>';
+            document.body.appendChild(dropdown);
+            positionDropdown();
+            try {
+                const resp = await fetch(`/EditarCotizacion/@Model.Form.Id?handler=BuscarCliente&q=${encodeURIComponent(q)}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                showDropdown(await resp.json());
+            } catch { closeDropdown(); }
+        }, 220);
+
+        input.addEventListener('input', () => doSearch(input.value.trim()));
+        input.addEventListener('keydown', e => {
+            if (!dropdown) return;
+            const items = dropdown.querySelectorAll('.ac-item');
+            if (e.key === 'ArrowDown')       { e.preventDefault(); setActive(Math.min(activeIdx + 1, items.length - 1)); }
+            else if (e.key === 'ArrowUp')    { e.preventDefault(); setActive(Math.max(activeIdx - 1, 0)); }
+            else if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); selectCliente(activeIdx); }
+            else if (e.key === 'Escape')     { closeDropdown(); }
+        });
+        input.addEventListener('blur', () => setTimeout(closeDropdown, 160));
+    })();
+
+    // ── DROPDOWN EMPRESAS (flecha) ────────────────────────────
+    (function initEmpresasDropdown() {
+        const input  = document.getElementById('clienteInput');
+        const btn    = document.getElementById('btnEmpresasArrow');
+        let dropdown = null;
+        let loaded   = false;
+        let empresas = [];
+
+        function escH(s) {
+            return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        function positionDropdown() {
+            if (!dropdown) return;
+            const rect = input.getBoundingClientRect();
+            const w    = Math.max(rect.width, 260);
+            dropdown.style.width = w + 'px';
+            let left = rect.left;
+            if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+            dropdown.style.left = left + 'px';
+            const spaceBelow = window.innerHeight - rect.bottom - 4;
+            const spaceAbove = rect.top - 4;
+            if (spaceBelow >= 120) {
+                dropdown.style.top       = (rect.bottom + 4) + 'px';
+                dropdown.style.bottom    = 'auto';
+                dropdown.style.maxHeight = Math.min(300, spaceBelow) + 'px';
+            } else {
+                dropdown.style.top       = 'auto';
+                dropdown.style.bottom    = (window.innerHeight - rect.top + 4) + 'px';
+                dropdown.style.maxHeight = Math.min(300, spaceAbove) + 'px';
+            }
+        }
+
+        function closeDropdown() {
+            if (dropdown) { dropdown.remove(); dropdown = null; }
+            btn.querySelector('i').className = 'bi bi-chevron-down';
+        }
+
+        function renderDropdown(items) {
+            if (dropdown) { dropdown.remove(); }
+            dropdown = document.createElement('div');
+            dropdown.className = 'ac-dropdown';
+            dropdown.style.cssText = 'position:fixed;z-index:99999;overflow-y:auto;';
+
+            if (items.length === 0) {
+                dropdown.innerHTML = '<div class="ac-empty">Sin empresas registradas</div>';
+            } else {
+                const filterWrap = document.createElement('div');
+                filterWrap.style.cssText = 'padding:.4rem .5rem;border-bottom:1px solid var(--border-color);';
+                const filterInput = document.createElement('input');
+                filterInput.type = 'text';
+                filterInput.placeholder = 'Filtrar…';
+                filterInput.style.cssText = 'width:100%;background:var(--bg-primary);border:1px solid var(--border-color);color:var(--text-primary);border-radius:4px;padding:.25rem .5rem;font-size:.82rem;outline:none;box-sizing:border-box;';
+                filterWrap.appendChild(filterInput);
+                dropdown.appendChild(filterWrap);
+
+                const list = document.createElement('div');
+                dropdown.appendChild(list);
+
+                function renderList(filter) {
+                    list.innerHTML = '';
+                    const filtered = filter
+                        ? items.filter(x => x.nombre.toLowerCase().includes(filter.toLowerCase()))
+                        : items;
+                    if (filtered.length === 0) {
+                        list.innerHTML = '<div class="ac-empty">Sin resultados</div>';
+                        return;
+                    }
+                    filtered.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'ac-item';
+                        div.innerHTML = `<div class="ac-desc"><i class="bi bi-building me-1" style="color:var(--accent-primary);font-size:.8rem;"></i>${escH(item.nombre)}</div>`;
+                        div.addEventListener('mousedown', e => {
+                            e.preventDefault();
+                            input.value = item.nombre;
+                            closeDropdown();
+                        });
+                        list.appendChild(div);
+                    });
+                }
+
+                renderList('');
+                filterInput.addEventListener('input', () => renderList(filterInput.value));
+                setTimeout(() => filterInput.focus(), 50);
+            }
+
+            document.body.appendChild(dropdown);
+            positionDropdown();
+        }
+
+        window.toggleEmpresasDropdown = async function() {
+            if (dropdown) { closeDropdown(); return; }
+
+            btn.querySelector('i').className = 'bi bi-chevron-up';
+
+            if (!loaded) {
+                dropdown = document.createElement('div');
+                dropdown.className = 'ac-dropdown';
+                dropdown.style.cssText = 'position:fixed;z-index:99999;overflow-y:auto;';
+                dropdown.innerHTML = '<div class="ac-loading"><i class="bi bi-hourglass-split me-1"></i>Cargando…</div>';
+                document.body.appendChild(dropdown);
+                positionDropdown();
+
+                try {
+                    const resp = await fetch('/EditarCotizacion/@Model.Form.Id?handler=ListarEmpresas',
+                        { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    empresas = await resp.json();
+                    loaded = true;
+                } catch {
+                    closeDropdown();
+                    return;
+                }
+            }
+
+            renderDropdown(empresas);
+        };
+
+        const onReflow = () => { if (dropdown) positionDropdown(); };
+        window.addEventListener('scroll', onReflow, { passive: true });
+        window.addEventListener('resize', onReflow, { passive: true });
+
+        document.addEventListener('click', e => {
+            if (!dropdown) return;
+            if (!btn.contains(e.target) && !dropdown.contains(e.target))
+                closeDropdown();
+        });
+    })();
+
+    // ── AUTOCOMPLETE MATERIALES ───────────────────────────────
+    function debounce(fn, ms) {
+        let t;
+        return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+    }
+
+    function initAutocomplete(input, row) {
+        let dropdown = null, activeIdx = -1, lastResults = [];
+
+        function positionDropdown() {
+            if (!dropdown) return;
+            const rect = input.getBoundingClientRect();
+            const GAP = 4, MIN_H = 120;
+            const spaceBelow = window.innerHeight - rect.bottom - GAP;
+            const spaceAbove = rect.top - GAP;
+            const w = Math.max(rect.width, 420);
+            dropdown.style.width = w + 'px';
+            let left = rect.left;
+            if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+            dropdown.style.left = left + 'px';
+            if (spaceBelow >= MIN_H) {
+                dropdown.style.top = (rect.bottom + GAP) + 'px';
+                dropdown.style.bottom = 'auto';
+                dropdown.style.maxHeight = Math.min(320, spaceBelow) + 'px';
+            } else {
+                dropdown.style.top = 'auto';
+                dropdown.style.bottom = (window.innerHeight - rect.top + GAP) + 'px';
+                dropdown.style.maxHeight = Math.min(320, spaceAbove) + 'px';
+            }
+        }
+
+        function closeDropdown() { if (dropdown) { dropdown.remove(); dropdown = null; } activeIdx = -1; }
+
+        function setActive(idx) {
+            if (!dropdown) return;
+            const items = dropdown.querySelectorAll('.ac-item');
+            items.forEach(el => el.classList.remove('ac-active'));
+            if (idx >= 0 && idx < items.length) { items[idx].classList.add('ac-active'); items[idx].scrollIntoView({ block: 'nearest' }); }
+            activeIdx = idx;
+        }
+
+        function showDropdown(items) {
+            closeDropdown(); lastResults = items; activeIdx = -1;
+            dropdown = document.createElement('div');
+            dropdown.className = 'ac-dropdown';
+            if (items.length === 0) {
+                dropdown.innerHTML = '<div class="ac-empty"><i class="bi bi-search me-1"></i>Sin resultados en catálogo</div>';
+            } else {
+                items.forEach((item, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'ac-item';
+                    div.innerHTML = `
+                        <div class="ac-desc">${escHtml(item.descripcion)}</div>
+                        <div class="ac-meta">
+                            <span><i class="bi bi-upc"></i>${escHtml(item.codFab)}</span>
+                            <span><i class="bi bi-rulers"></i>${escHtml(item.um)}</span>
+                            ${item.proveedor ? `<span><i class="bi bi-building"></i>${escHtml(item.proveedor)}</span>` : ''}
+                            ${item.pu > 0 ? `<span><i class="bi bi-cash"></i>${parseFloat(item.pu).toFixed(2)} ${escHtml(item.moneda)}</span>` : ''}
+                        </div>`;
+                    div.addEventListener('mousedown', e => { e.preventDefault(); selectItem(i); });
+                    dropdown.appendChild(div);
+                });
+            }
+            document.body.appendChild(dropdown);
+            positionDropdown();
+        }
+
+        function selectItem(idx) {
+            const item = lastResults[idx];
+            if (!item) return;
+            input.value = item.descripcion;
+            const get = sel => row.querySelector(sel);
+            const unidadEl = get('[name*="Unidad"]');
+            if (unidadEl) unidadEl.value = item.um || '';
+
+            if (currentFormat === 2) {
+                const moneda = (item.moneda || 'MXN').toUpperCase();
+                const pu = parseFloat(item.pu) || 0;
+                if (moneda === 'USD') {
+                    const pUsdEl = row.querySelector('.f2-pusd');
+                    const pMnEl  = row.querySelector('.f2-pmn');
+                    if (pUsdEl) pUsdEl.value = pu.toFixed(4);
+                    if (pMnEl) delete pMnEl.dataset.manual;
+                    recalcF2(row);
+                } else {
+                    const pMnEl = row.querySelector('.f2-pmn');
+                    if (pMnEl) {
+                        pMnEl.value = pu.toFixed(4);
+                        pMnEl.dataset.manual = '1';
+                    }
+                    onPmnChange(row);
+                }
+            } else {
+                const marcaEl = get('[name*="Marca"]');
+                if (marcaEl) marcaEl.value = item.proveedor || '';
+                const puEl = get('[name*="PrecioUnitario"]');
+                if (puEl) puEl.value = item.pu || 0;
+                const monedaSel = get('[name*="Moneda"]');
+                if (monedaSel) monedaSel.value = (item.moneda||'MXN').toUpperCase() === 'USD' ? 'USD' : 'MXN';
+                calcularTotal(row);
+            }
+
+            closeDropdown();
+            get('[name*="Cantidad"]').focus();
+        }
+
+        const onReflow = () => { if (dropdown) positionDropdown(); };
+        window.addEventListener('scroll', onReflow, { passive: true });
+        window.addEventListener('resize', onReflow, { passive: true });
+        document.querySelector('.items-table-wrapper')?.addEventListener('scroll', onReflow, { passive: true });
+
+        const doSearch = debounce(async (q) => {
+            if (q.length < 2) { closeDropdown(); return; }
+            closeDropdown();
+            dropdown = document.createElement('div');
+            dropdown.className = 'ac-dropdown';
+            dropdown.innerHTML = '<div class="ac-loading"><i class="bi bi-hourglass-split me-1"></i>Buscando…</div>';
+            document.body.appendChild(dropdown);
+            positionDropdown();
+            try {
+                const resp = await fetch(`/EditarCotizacion/@Model.Form.Id?handler=BuscarMaterial&q=${encodeURIComponent(q)}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                showDropdown(await resp.json());
+            } catch { closeDropdown(); }
+        }, 280);
+
+        input.addEventListener('input', () => doSearch(input.value.trim()));
+        input.addEventListener('keydown', e => {
+            if (!dropdown) return;
+            const items = dropdown.querySelectorAll('.ac-item');
+            if (e.key === 'ArrowDown')       { e.preventDefault(); setActive(Math.min(activeIdx + 1, items.length - 1)); }
+            else if (e.key === 'ArrowUp')    { e.preventDefault(); setActive(Math.max(activeIdx - 1, 0)); }
+            else if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); selectItem(activeIdx); }
+            else if (e.key === 'Escape')     { closeDropdown(); }
+        });
+        input.addEventListener('blur', () => setTimeout(closeDropdown, 160));
+    }
+</script>
+}

@@ -1,0 +1,873 @@
+@page
+@model InventarioWeb.Pages.ImprimirVolumetriaModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Volumetría";
+
+    var hayEstim    = Model.ListaMateriales.Any();
+    var hayEntradas = Model.ListaEntradas.Any();
+    var haySalidas  = Model.ListaSalidas.Any();
+    // La volumetría se arma con los mismos registros de salidas seleccionados
+    var hayVolum    = haySalidas;
+
+    // Pestaña activa por defecto: la primera disponible
+    var activa = hayEstim ? "estimacion" : hayEntradas ? "entradas" : haySalidas ? "salidas" : "volumetria";
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Volumetría</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
+        body {
+            font-family: Calibri, Arial, sans-serif;
+            font-size: 14px;
+            background: #eef1f5;
+            color: #000;
+            padding: 16px 16px 70px;
+        }
+
+        :root {
+            --azul-oscuro: #1e3a6e;
+            --azul-medio:  #2d4f8f;
+            --azul-claro:  #dbe6f7;
+            --verde:       #1a7a3c;
+        }
+
+        /* ── Barra superior (solo pantalla) ── */
+        .top-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .btn-imprimir {
+            background: #1e3a6e;
+            color: #fff;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-imprimir:hover { background: #16305c; }
+        .btn-volver {
+            background: #fff;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            text-decoration: none;
+        }
+        .btn-excel {
+            background: #1a7a3c;
+            color: #fff;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-excel:hover { background: #145c2d; }
+        .top-info { color: #555; font-size: 12px; margin-left: auto; }
+
+        /* ── Hojas ── */
+        .hoja {
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 18px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.06);
+        }
+        .hoja[hidden] { display: none; }
+
+        .hoja-titulo {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--azul-oscuro);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--azul-claro);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .hoja-titulo .cnt {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            background: #eef2f8;
+            border-radius: 20px;
+            padding: 2px 10px;
+        }
+
+        table.grid {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.5px solid var(--azul-medio);
+        }
+        table.grid thead { display: table-header-group; }
+        table.grid thead th {
+            background: var(--azul-oscuro);
+            color: #fff;
+            font-weight: 700;
+            text-align: left;
+            padding: 7px 9px;
+            border: 1px solid var(--azul-medio);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        table.grid tbody td {
+            border: 1px solid #c9d6ea;
+            padding: 5px 9px;
+            vertical-align: middle;
+            font-size: 13px;
+        }
+        table.grid tbody tr:nth-child(odd)  td { background: #fff; }
+        table.grid tbody tr:nth-child(even) td { background: var(--azul-claro); }
+        td.num { text-align: right; white-space: nowrap; }
+        td.ctr { text-align: center; }
+        .empty { padding: 20px; text-align: center; color: #94a3b8; }
+
+        /* ── Estimación: formato verde ── */
+        .tabla-hdr {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.5px solid #375623;
+            margin-bottom: 8px;
+        }
+        .tabla-hdr td {
+            border: 1px solid #375623;
+            padding: 3px 8px;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+        .tabla-hdr td.lbl {
+            background: #1a5c1a;
+            color: #fff;
+            font-weight: bold;
+            text-align: center;
+            white-space: nowrap;
+            width: 120px;
+        }
+        .tabla-hdr td.val { background: #e2f0d9; }
+
+        .cell-edit {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-family: Calibri, Arial, sans-serif;
+            font-size: 13px;
+            color: #000;
+            outline: none;
+            padding: 2px 3px;
+        }
+        .cell-edit:focus { background: #fffde7; }
+        .cell-edit.num { text-align: right; }
+        .cell-edit.ctr { text-align: center; }
+        .cell-edit[readonly] { background: #eef2ea; color: #4b5a44; cursor: not-allowed; }
+        .cell-edit[readonly]:focus { background: #eef2ea; }
+
+        /* Texto que reemplaza al selector al imprimir */
+        .solo-print { display: none; font-weight: bold; }
+
+        /* Selector de proyecto (solo pantalla) */
+        .proj-select {
+            width: 100%;
+            border: 1px solid #6a8a4f;
+            border-radius: 4px;
+            background: #fff;
+            font-family: Calibri, Arial, sans-serif;
+            font-size: 12px;
+            color: #1a5c1a;
+            padding: 3px 4px;
+            margin-bottom: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+        .proj-select:focus { border-color: #1a5c1a; background: #fffde7; }
+
+        .grid-verde {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.5px solid #375623;
+        }
+        .grid-verde thead { display: table-header-group; }
+        .grid-verde thead th {
+            background: #1a5c1a;
+            color: #fff;
+            font-weight: bold;
+            text-align: center;
+            padding: 7px 6px;
+            border: 1px solid #375623;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .grid-verde tbody td {
+            border: 1px solid #6a8a4f;
+            padding: 4px 7px;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+        .grid-verde tbody tr:nth-child(odd)  td { background: #fff; }
+        .grid-verde tbody tr:nth-child(even) td { background: #e2f0d9; }
+        .grid-verde td.num { text-align: right; white-space: nowrap; }
+        .grid-verde td.ctr { text-align: center; }
+        .grid-verde td.edit { padding: 0; }
+        .grid-verde td.edit .cell-edit { padding: 4px 7px; }
+
+        /* ── Firma ── */
+        .firma-section {
+            margin-top: 32px;
+            display: flex;
+            justify-content: flex-start;
+        }
+        .firma-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            min-width: 220px;
+        }
+        .firma-linea {
+            width: 100%;
+            border-bottom: 1.5px solid #1a5c1a;
+        }
+        .firma-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1a5c1a;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+        }
+
+        /* ── Barra de pestañas estilo Excel (abajo) ── */
+        .tab-bar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            display: flex;
+            align-items: flex-end;
+            gap: 3px;
+            background: #1f2937;
+            padding: 6px 12px 0;
+            height: 46px;
+            box-shadow: 0 -2px 8px rgba(0,0,0,.25);
+            z-index: 100;
+        }
+        .tab-sheet {
+            background: #374151;
+            color: #d1d5db;
+            border: none;
+            border-radius: 6px 6px 0 0;
+            padding: 8px 22px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-top: 3px solid transparent;
+            transition: background .15s, color .15s;
+        }
+        .tab-sheet:hover { background: #4b5563; color: #fff; }
+        .tab-sheet.active {
+            background: #fff;
+            color: #111827;
+            border-top: 3px solid var(--verde);
+        }
+        .tab-count {
+            display: inline-block;
+            margin-left: 7px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #6b7280;
+        }
+        .tab-sheet.active .tab-count { color: var(--verde); }
+
+        /* ── Impresión: mostrar TODAS las hojas, ocultar controles ── */
+        @@media print {
+            @@page { margin: 10mm 8mm; size: landscape; }
+            body { background: #fff; padding: 0; font-size: 12px; }
+            .top-bar, .tab-bar, .proj-select { display: none !important; }
+            .solo-print { display: inline !important; }
+            .hoja {
+                display: block !important;
+                border: none;
+                box-shadow: none;
+                border-radius: 0;
+                padding: 0;
+                margin-bottom: 0;
+            }
+            .hoja[hidden] { display: block !important; }
+            .hoja + .hoja { page-break-before: always; margin-top: 0; }
+            table.grid tbody td { font-size: 11px; padding: 4px 6px; }
+            table.grid thead th { font-size: 11px; padding: 5px 6px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <button class="btn-imprimir" onclick="window.print()">🖨️ Imprimir</button>
+        <button class="btn-excel" onclick="exportarExcel()">📊 Exportar a Excel</button>
+        <a class="btn-volver" href="/Volumetrias">← Volver</a>
+        <span class="top-info">
+            Estimación: @Model.ListaMateriales.Count &nbsp;|&nbsp;
+            Entradas: @Model.ListaEntradas.Count &nbsp;|&nbsp;
+            Salidas: @Model.ListaSalidas.Count
+        </span>
+    </div>
+
+    @* ══════════ HOJA ESTIMACIÓN (formato verde) ══════════ *@
+    @if (hayEstim)
+    {
+        <div class="hoja hoja-estim" id="hoja-estimacion" data-hoja="estimacion" hidden="@(activa != "estimacion")">
+
+            <!-- Encabezado editable -->
+            <table class="tabla-hdr">
+                <tr>
+                    <td class="lbl">CLIENTE</td>
+                    <td class="val" colspan="3">
+                        <select class="proj-select" onchange="aplicarCliente(this)" title="Selecciona un cliente">
+                            <option value="">— Selecciona un cliente —</option>
+                            @foreach (var c in Model.Clientes)
+                            {
+                                <option value="@c">@c</option>
+                            }
+                        </select>
+                        <input class="cell-edit" id="hdrCliente" value="@Model.HdrCliente" placeholder="Razón social..." />
+                    </td>
+                    <td class="lbl">OT</td>
+                    <td class="val"><input class="cell-edit" id="hdrOt" value="@Model.HdrOt" /></td>
+                    <td class="lbl">MONTO</td>
+                    <td class="val"><input class="cell-edit num" /></td>
+                </tr>
+                <tr>
+                    <td class="lbl">PROYECTO</td>
+                    <td class="val" colspan="3">
+                        <select class="proj-select" onchange="aplicarProyecto(this)" title="Selecciona un proyecto para autocompletar el encabezado">
+                            <option value="">— Selecciona un proyecto —</option>
+                            @foreach (var p in Model.Proyectos)
+                            {
+                                <option value="@p.Cotizacion" data-cliente="@p.Cliente" data-proyecto="@p.Proyecto" data-po="@p.NumeroPo">@p.Cotizacion@(string.IsNullOrEmpty(p.Proyecto) ? "" : " - " + p.Proyecto)</option>
+                            }
+                        </select>
+                        <input class="cell-edit" id="hdrProyecto" value="@Model.HdrProyecto" placeholder="Descripción del proyecto..." />
+                    </td>
+                    <td class="lbl">PO</td>
+                    <td class="val"><input class="cell-edit" id="hdrPo" value="@Model.HdrPo" /></td>
+                    <td class="lbl">GASTO</td>
+                    <td class="val"><input class="cell-edit num" /></td>
+                </tr>
+                <tr>
+                    <td class="lbl">LOCALIDAD</td>
+                    <td class="val" colspan="3"><input class="cell-edit" value="@Model.HdrLocalidad" placeholder="Localidad / Ubicación..." /></td>
+                    <td class="lbl">No NODOS</td>
+                    <td class="val"><input class="cell-edit num" id="hdrNodos" oninput="recalcEstim()" placeholder="0" /></td>
+                    <td class="lbl">BALANCE DE PROYECTO</td>
+                    <td class="val"><input class="cell-edit num" /></td>
+                </tr>
+                <tr>
+                    <td class="lbl">LICITACIÓN</td>
+                    <td class="val" colspan="7">
+                        <select class="proj-select" id="hdrLicitacion" onchange="recalcEstim()" style="margin-bottom:0; max-width:340px;">
+                            <option value="SI">SI — Proyecto = cantidad × nodos</option>
+                            <option value="NO">NO — Proyecto = cantidad</option>
+                        </select>
+                        <span class="solo-print" id="hdrLicTxt"></span>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Tabla de materiales (descripciones del catálogo seleccionado) -->
+            <table class="grid-verde">
+                <thead>
+                    <tr>
+                        <th style="width:80px;">COD-FAB</th>
+                        <th style="width:70px;">COD-INT</th>
+                        <th>DESCRIPCION DE PRODUCTO</th>
+                        <th style="width:66px;">CANTIDAD</th>
+                        <th style="width:40px;">UM</th>
+                        <th style="width:70px;">PROYECTO</th>
+                        <th style="width:66px;">ENTRADA</th>
+                        <th style="width:60px;">SALIDAS</th>
+                        <th style="width:70px;">INSTALADO</th>
+                        <th style="width:66px;">BALANCE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in Model.ListaMateriales)
+                    {
+                        Model.EntradaPorCod.TryGetValue(m.CodFab.Trim(), out var ent);
+                        Model.SalidaPorCod.TryGetValue(m.CodFab.Trim(), out var sal);
+                        <tr>
+                            <td class="ctr">@m.CodFab</td>
+                            <td class="ctr">@m.CodInt</td>
+                            <td>@m.Descripcion</td>
+                            <td class="edit"><input class="cell-edit num est-cant" oninput="recalcEstim()" /></td>
+                            <td class="ctr">@m.Um</td>
+                            <td class="edit"><input class="cell-edit num est-proj" readonly tabindex="-1" /></td>
+                            <td class="edit"><input class="cell-edit num est-entrada" value="@(ent > 0 ? ent.ToString("N2") : "")" oninput="recalcEstim()" /></td>
+                            <td class="edit"><input class="cell-edit num est-salida" value="@(sal > 0 ? sal.ToString("N2") : "")" oninput="recalcEstim()" /></td>
+                            <td class="edit"><input class="cell-edit num est-inst" oninput="recalcEstim()" /></td>
+                            <td class="ctr est-balance"></td>
+                        </tr>
+                    }
+                    @for (int i = 0; i < 5; i++)
+                    {
+                        <tr>
+                            <td class="edit"><input class="cell-edit ctr" /></td>
+                            <td class="edit"><input class="cell-edit ctr" /></td>
+                            <td class="edit"><input class="cell-edit" /></td>
+                            <td class="edit"><input class="cell-edit num est-cant" oninput="recalcEstim()" /></td>
+                            <td class="edit"><input class="cell-edit ctr" /></td>
+                            <td class="edit"><input class="cell-edit num est-proj" readonly tabindex="-1" /></td>
+                            <td class="edit"><input class="cell-edit num est-entrada" oninput="recalcEstim()" /></td>
+                            <td class="edit"><input class="cell-edit num est-salida" oninput="recalcEstim()" /></td>
+                            <td class="edit"><input class="cell-edit num est-inst" oninput="recalcEstim()" /></td>
+                            <td class="ctr est-balance"></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @* ══════════ HOJA ENTRADAS ══════════ *@
+    @if (hayEntradas)
+    {
+        <div class="hoja" id="hoja-entradas" data-hoja="entradas" hidden="@(activa != "entradas")">
+            <div class="hoja-titulo">
+                Entradas <span class="cnt">@Model.ListaEntradas.Count registro(s)</span>
+            </div>
+            <table class="grid">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>CÓDIGO</th>
+                        <th>DESCRIPCIÓN</th>
+                        <th>MARCA</th>
+                        <th>CANTIDAD</th>
+                        <th>UM</th>
+                        <th>PROVEEDOR</th>
+                        <th>FECHA</th>
+                        <th>NO. PO</th>
+                        <th>FAC</th>
+                        <th>PROYECTO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in Model.ListaEntradas)
+                    {
+                        <tr>
+                            <td class="ctr">@e.Id</td>
+                            <td>@e.CodFab</td>
+                            <td>@e.Descripcion</td>
+                            <td>@e.Marca</td>
+                            <td class="num">@e.Cantidad.ToString("N2")</td>
+                            <td class="ctr">@e.Um</td>
+                            <td>@e.Proveedor</td>
+                            <td class="ctr">@e.FechaCompra.ToString("dd/MM/yyyy")</td>
+                            <td class="ctr">@(e.NoPo ?? "")</td>
+                            <td class="ctr">@(e.Fac ?? "")</td>
+                            <td>@(e.Proyecto ?? "")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @* ══════════ HOJA SALIDAS ══════════ *@
+    @if (haySalidas)
+    {
+        <div class="hoja" id="hoja-salidas" data-hoja="salidas" hidden="@(activa != "salidas")">
+            <div class="hoja-titulo">
+                Salidas <span class="cnt">@Model.ListaSalidas.Count registro(s)</span>
+            </div>
+            <table class="grid">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>CÓDIGO</th>
+                        <th>DESCRIPCIÓN</th>
+                        <th>CANTIDAD</th>
+                        <th>UM</th>
+                        <th>FECHA</th>
+                        <th>NO. SALIDA</th>
+                        <th>RECIBE</th>
+                        <th>INSTALADO</th>
+                        <th>PROYECTO</th>
+                        <th>BALANCE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model.ListaSalidas)
+                    {
+                        <tr>
+                            <td class="ctr">@s.Id</td>
+                            <td>@s.CodFab</td>
+                            <td>@s.Descripcion</td>
+                            <td class="num">@s.Cantidad.ToString("N2")</td>
+                            <td class="ctr">@s.Um</td>
+                            <td class="ctr">@s.FechaSalida.ToString("dd/MM/yyyy")</td>
+                            <td class="ctr">@(s.NoSalida ?? "")</td>
+                            <td>@s.Recibe</td>
+                            <td>@s.Instalado</td>
+                            <td>@s.ProyectoAsignado</td>
+                            <td class="num">@s.Balance.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @* ══════════ HOJA VOLUMETRÍA (formato verde, Balance = Cantidad − Instalado) ══════════ *@
+    @if (hayVolum)
+    {
+        <div class="hoja hoja-estim" id="hoja-volumetria" data-hoja="volumetria" hidden="@(activa != "volumetria")">
+
+            <table class="tabla-hdr">
+                <tr>
+                    <td class="lbl">CLIENTE</td>
+                    <td class="val" colspan="3"><input class="cell-edit" value="@Model.HdrCliente" placeholder="Razón social..." /></td>
+                    <td class="lbl">OT</td>
+                    <td class="val"><input class="cell-edit" value="@Model.HdrOt" /></td>
+                </tr>
+                <tr>
+                    <td class="lbl">PROYECTO</td>
+                    <td class="val" colspan="3"><input class="cell-edit" value="@Model.HdrProyecto" placeholder="Descripción del proyecto..." /></td>
+                    <td class="lbl">LOCALIDAD</td>
+                    <td class="val"><input class="cell-edit" value="@Model.HdrLocalidad" placeholder="Localidad..." /></td>
+                </tr>
+            </table>
+
+            <table class="grid-verde">
+                <thead>
+                    <tr>
+                        <th style="width:80px;">COD-FAB</th>
+                        <th style="width:70px;">COD-INT</th>
+                        <th>DESCRIPCION DE PRODUCTO</th>
+                        <th style="width:66px;">CANTIDAD</th>
+                        <th style="width:40px;">UM</th>
+                        <th style="width:80px;">FECHA</th>
+                        <th style="width:66px;">No SALIDA</th>
+                        <th style="width:120px;">RECIBE</th>
+                        <th style="width:70px;">INSTALADO</th>
+                        <th style="width:66px;">BALANCE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var g in Model.VolumetriaGrupos)
+                    {
+                        <tr class="vol-row">
+                            <td class="ctr">@g.CodFab</td>
+                            <td class="ctr"></td>
+                            <td>@g.Descripcion</td>
+                            <td class="edit"><input class="cell-edit num vol-cant" value="@g.Cantidad.ToString("0.##")" readonly tabindex="-1" oninput="recalcVolum()" /></td>
+                            <td class="ctr">@g.Um</td>
+                            <td class="ctr">@g.Fecha</td>
+                            <td class="ctr">@g.NoSalida</td>
+                            <td>@g.Recibe</td>
+                            <td class="edit"><input class="cell-edit num vol-inst" value="@g.Instalado.ToString("0.##")" readonly tabindex="-1" oninput="recalcVolum()" /></td>
+                            <td class="ctr vol-bal"></td>
+                        </tr>
+                    }
+                    @for (int i = 0; i < 5; i++)
+                    {
+                        <tr class="vol-row">
+                            <td class="edit"><input class="cell-edit ctr" /></td>
+                            <td class="edit"><input class="cell-edit ctr" /></td>
+                            <td class="edit"><input class="cell-edit" /></td>
+                            <td class="edit"><input class="cell-edit num vol-cant" oninput="recalcVolum()" /></td>
+                            <td class="edit"><input class="cell-edit ctr" /></td>
+                            <td class="edit"><input class="cell-edit ctr" /></td>
+                            <td class="edit"><input class="cell-edit ctr" /></td>
+                            <td class="edit"><input class="cell-edit" /></td>
+                            <td class="edit"><input class="cell-edit num vol-inst" oninput="recalcVolum()" /></td>
+                            <td class="ctr vol-bal"></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <!-- Firma -->
+            <div class="firma-section">
+                <div class="firma-box">
+                    <div class="firma-linea"></div>
+                    <div class="firma-label">Firma</div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* ══════════ PESTAÑAS ESTILO EXCEL ══════════ *@
+    <div class="tab-bar">
+        @if (hayEstim)
+        {
+            <button type="button" class="tab-sheet @(activa == "estimacion" ? "active" : "")" data-target="estimacion" onclick="mostrarHoja('estimacion')">
+                Estimación <span class="tab-count">@Model.ListaMateriales.Count</span>
+            </button>
+        }
+        @if (hayEntradas)
+        {
+            <button type="button" class="tab-sheet @(activa == "entradas" ? "active" : "")" data-target="entradas" onclick="mostrarHoja('entradas')">
+                Entradas <span class="tab-count">@Model.ListaEntradas.Count</span>
+            </button>
+        }
+        @if (haySalidas)
+        {
+            <button type="button" class="tab-sheet @(activa == "salidas" ? "active" : "")" data-target="salidas" onclick="mostrarHoja('salidas')">
+                Salidas <span class="tab-count">@Model.ListaSalidas.Count</span>
+            </button>
+        }
+        @if (hayVolum)
+        {
+            <button type="button" class="tab-sheet @(activa == "volumetria" ? "active" : "")" data-target="volumetria" onclick="mostrarHoja('volumetria')">
+                Volumetría <span class="tab-count">@Model.ListaSalidas.Count</span>
+            </button>
+        }
+    </div>
+
+<script>
+    function aplicarCliente(sel) {
+        const cli = document.getElementById('hdrCliente');
+        if (cli) cli.value = sel.value || '';
+    }
+
+    function aplicarProyecto(sel) {
+        const opt = sel.options[sel.selectedIndex];
+        if (!opt || !opt.value) return;
+        const cli = document.getElementById('hdrCliente');
+        const pro = document.getElementById('hdrProyecto');
+        const ot  = document.getElementById('hdrOt');
+        const po  = document.getElementById('hdrPo');
+        if (cli) cli.value = opt.dataset.cliente || '';
+        if (pro) pro.value = opt.dataset.proyecto || '';
+        if (ot)  ot.value  = opt.value || '';
+        if (po)  po.value  = opt.dataset.po || '';
+    }
+
+    function mostrarHoja(nombre) {
+        document.querySelectorAll('.hoja').forEach(h => {
+            h.hidden = (h.dataset.hoja !== nombre);
+        });
+        document.querySelectorAll('.tab-sheet').forEach(t => {
+            t.classList.toggle('active', t.dataset.target === nombre);
+        });
+    }
+
+    // ── Operaciones de la hoja ESTIMACION (cálculo en vivo) ──
+    function estNum(x) {
+        x = (x || '').toString().replace(/,/g, '').trim();
+        var n = parseFloat(x);
+        return isNaN(n) ? 0 : n;
+    }
+    function estFmt(n) {
+        return n.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+    function estVal(tr, sel) {
+        var el = tr.querySelector(sel);
+        if (!el) return '';
+        return el.tagName === 'INPUT' ? el.value : el.textContent;
+    }
+    function recalcEstim() {
+        var nodos = estNum(document.getElementById('hdrNodos')?.value);
+        var licVal = document.getElementById('hdrLicitacion')?.value || 'SI';
+        var lic   = licVal === 'SI';
+        // Reflejar SI/NO como texto para que se vea en la impresión
+        var licTxt = document.getElementById('hdrLicTxt');
+        if (licTxt) licTxt.textContent = licVal;
+        var hoja  = document.getElementById('hoja-estimacion');
+        if (!hoja) return;
+        hoja.querySelectorAll('tbody tr').forEach(function (tr) {
+            var cant = estNum(estVal(tr, '.est-cant'));
+            var ent  = estNum(estVal(tr, '.est-entrada'));
+            var sal  = estNum(estVal(tr, '.est-salida'));
+            var inst = estNum(estVal(tr, '.est-inst'));
+
+            // PROYECTO = cantidad × nodos (si es licitación); si no, la cantidad tal cual
+            var proy = lic ? cant * nodos : cant;
+            var proyEl = tr.querySelector('.est-proj');
+            if (proyEl) {
+                proyEl.value = cant ? estFmt(proy) : '';
+            }
+
+            // Lo requerido: el proyectado si hay nodos, si no la cantidad base
+            var requerido = proy > 0 ? proy : cant;
+
+            // BALANCE = semáforo. EXCEDIDO solo si las SALIDAS superan lo requerido.
+            var balEl = tr.querySelector('.est-balance');
+            if (balEl) {
+                var texto = '', color = '';
+                if (cant === 0 && ent === 0 && sal === 0 && inst === 0) {
+                    texto = '';
+                } else if (sal > requerido) {
+                    texto = 'EXCEDIDO';   color = '#c0392b';   // sacaste más de lo requerido
+                } else if (ent < requerido) {
+                    texto = 'PENDIENTE';  color = '#b8860b';   // aún no ha llegado suficiente material
+                } else {
+                    texto = estFmt(requerido - sal) + ' rest.'; color = '#1a7a3c';  // falta por surtir
+                }
+                balEl.textContent = texto;
+                balEl.style.color = color;
+                balEl.style.fontWeight = texto ? 'bold' : 'normal';
+            }
+        });
+    }
+    // ── Volumetría: BALANCE = Cantidad − Instalado (cálculo en vivo) ──
+    function recalcVolum() {
+        var hoja = document.getElementById('hoja-volumetria');
+        if (!hoja) return;
+        hoja.querySelectorAll('tr.vol-row').forEach(function (tr) {
+            var cantRaw = estVal(tr, '.vol-cant');
+            var instRaw = estVal(tr, '.vol-inst');
+            var balEl = tr.querySelector('.vol-bal');
+            if (balEl) {
+                var hayDato = (cantRaw || '').trim() !== '' || (instRaw || '').trim() !== '';
+                balEl.textContent = hayDato ? estFmt(estNum(cantRaw) - estNum(instRaw)) : '';
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        recalcEstim();
+        recalcVolum();
+    });
+
+    // ── Exportar la hoja activa (con lo ya capturado) a un .xls editable ──
+    // Copiamos el estilo YA CALCULADO (bordes, colores, alineación) de cada
+    // elemento como atributo style inline, porque Excel ignora el <style> de
+    // la página y solo respeta CSS puesto directamente en cada celda.
+    var ESTILOS_A_COPIAR = [
+        'border-top', 'border-right', 'border-bottom', 'border-left',
+        'background-color', 'color', 'font-weight', 'text-align',
+        'padding', 'white-space', 'font-size', 'font-family', 'vertical-align'
+    ];
+
+    function copiarEstiloInline(orig, clone) {
+        var cs = window.getComputedStyle(orig);
+        var partes = ESTILOS_A_COPIAR.map(function (p) { return p + ':' + cs.getPropertyValue(p); });
+        clone.setAttribute('style', partes.join(';'));
+    }
+
+    function copiarEstilos(origRoot, cloneRoot) {
+        copiarEstiloInline(origRoot, cloneRoot);
+        var origEls = origRoot.querySelectorAll('*');
+        var cloneEls = cloneRoot.querySelectorAll('*');
+        origEls.forEach(function (el, i) { copiarEstiloInline(el, cloneEls[i]); });
+    }
+
+    // filasExtra: filas adicionales a agregar al final del <tbody> (p.ej. la línea de firma).
+    // Van dentro de la MISMA tabla porque Excel a veces coloca cada <table> del HTML
+    // en una hoja/zona distinta, y así garantizamos que quede junto a los datos.
+    function tablaConValores(table, filasExtra) {
+        var clone = table.cloneNode(true);
+        copiarEstilos(table, clone);
+        clone.setAttribute('cellspacing', '0');
+        clone.setAttribute('cellpadding', '4');
+
+        var origInputs = table.querySelectorAll('input');
+        var cloneInputs = clone.querySelectorAll('input');
+        cloneInputs.forEach(function (inp, i) {
+            var val = origInputs[i] ? origInputs[i].value : '';
+            var span = document.createElement('span');
+            span.textContent = val;
+            span.setAttribute('style', inp.getAttribute('style') || '');
+            inp.parentNode.replaceChild(span, inp);
+        });
+        clone.querySelectorAll('select').forEach(function (s) { s.remove(); });
+
+        if (filasExtra && filasExtra.length) {
+            var tbody = clone.querySelector('tbody') || clone;
+            var numCols = clone.querySelectorAll('thead th').length || 1;
+            filasExtra.forEach(function (fila) {
+                var tr = document.createElement('tr');
+                var td = document.createElement('td');
+                td.colSpan = numCols;
+                td.innerHTML = fila.html;
+                td.setAttribute('style', fila.style || '');
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+            });
+        }
+
+        return clone.outerHTML;
+    }
+
+    function obtenerProyectoTexto(hoja) {
+        var hdr = hoja.querySelector('.tabla-hdr');
+        if (!hdr) return '';
+        var filas = hdr.querySelectorAll('tr');
+        for (var i = 0; i < filas.length; i++) {
+            var lbl = filas[i].querySelector('td.lbl');
+            if (lbl && lbl.textContent.trim().toUpperCase() === 'PROYECTO') {
+                var inp = filas[i].querySelector('td.val input.cell-edit');
+                return inp ? inp.value.trim() : '';
+            }
+        }
+        return '';
+    }
+
+    function sanitizarNombreArchivo(s) {
+        return (s || '')
+            .replace(/[\\/:*?"<>|]/g, '-')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .substring(0, 60);
+    }
+
+    function fechaHoy() {
+        var d = new Date();
+        var dd = String(d.getDate()).padStart(2, '0');
+        var mm = String(d.getMonth() + 1).padStart(2, '0');
+        return dd + '-' + mm + '-' + d.getFullYear();
+    }
+
+    function exportarExcel() {
+        var hoja = document.querySelector('.hoja:not([hidden])');
+        if (!hoja) return;
+
+        var proyecto = sanitizarNombreArchivo(obtenerProyectoTexto(hoja)) || (hoja.dataset.hoja || 'volumetria');
+        var archivo = 'Volumetria_' + proyecto + '_' + fechaHoy() + '.xls';
+
+        var html = '<html><head><meta charset="UTF-8"></head><body>';
+        var hdr = hoja.querySelector('.tabla-hdr');
+        if (hdr) html += tablaConValores(hdr) + '<br/>';
+        var grid = hoja.querySelector('table.grid, table.grid-verde');
+        var firma = hoja.querySelector('.firma-section');
+        var filasExtra = [];
+        if (firma) {
+            filasExtra.push({ html: '&nbsp;', style: 'border:none;padding-top:26px;' });
+            filasExtra.push({ html: 'FIRMA', style: 'border-top:1.5px solid #1a5c1a;border-left:none;border-right:none;border-bottom:none;font-weight:bold;color:#1a5c1a;text-align:center;padding-top:6px;' });
+        }
+        if (grid) html += tablaConValores(grid, filasExtra);
+        html += '</body></html>';
+
+        var blob = new Blob(['﻿', html], { type: 'application/vnd.ms-excel' });
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = archivo;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    }
+</script>
+</body>
+</html>

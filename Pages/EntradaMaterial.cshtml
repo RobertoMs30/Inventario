@@ -1,0 +1,1664 @@
+@page
+@model InventarioWeb.Pages.EntradaMaterialModel
+@{
+    ViewData["Title"] = "Entrada de material";
+}
+
+<div class="entrada-page">
+    <div class="entrada-grid">
+
+        <!-- FORMULARIO -->
+        <div class="card-dark">
+            <!-- Tabs Entrada / Devolución en el header -->
+            <div class="coda-tab-bar form-tab-bar">
+                <button type="button" id="navBtnEntrada" class="coda-tab active" onclick="setFormMode('entrada')">
+                    <i class="bi bi-plus-circle"></i> Entrada
+                </button>
+                <button type="button" id="navBtnDevolucion" class="coda-tab" onclick="setFormMode('devolucion')">
+                    <i class="bi bi-arrow-return-left"></i> Devolución
+                </button>
+            </div>
+            <div class="card-dark-body">
+
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert-dark-error mb-3">
+                        <div class="fw-semibold mb-2">
+                            <i class="bi bi-exclamation-circle me-1"></i>
+                            Revisa lo siguiente:
+                        </div>
+                        <ul>
+                            @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                            {
+                                <li>@err.ErrorMessage</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                <!-- Panel Entrada Material -->
+                <div id="panelEntrada">
+                <form method="post" class="form-dark">
+                    <input type="hidden" asp-for="Form.IsExisting" id="hiddenIsExisting" />
+                    <div class="form-grid">
+
+                        <div class="form-group" style="position:relative;">
+                            <label class="form-label">Cod_int *</label>
+                            <input asp-for="Form.CodInt" id="inputCodInt" class="form-control"
+                                   placeholder="Código interno"
+                                   autocomplete="off" readonly
+                                   style="background:#f1f4f9;cursor:not-allowed;opacity:.8;" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Cod_Fab</label>
+                            <input asp-for="Form.CodFab" id="inputCodFab" class="form-control"
+                                   placeholder="Código de fabricante" autocomplete="off" />
+                        </div>
+
+                        <!-- Badge de material existente -->
+                        <div id="badgeMaterialExistente" class="form-group full-width" style="display:none;">
+                            <div style="background:rgba(30,58,110,.1);border:1px solid rgba(30,58,110,.3);border-radius:8px;padding:.65rem 1rem;display:flex;align-items:center;gap:.6rem;font-size:.85rem;color:var(--accent-primary);">
+                                <i class="bi bi-check-circle-fill"></i>
+                                <span>Material existente — solo se actualizará la existencia en catálogo.</span>
+                            </div>
+                        </div>
+
+                        <!-- Actualizar precio (solo material existente) -->
+                        <div id="seccionActualizarPrecio" class="form-group full-width" style="display:none;">
+                            <div class="form-divider" style="grid-column:1/-1;">
+                                <span>Actualizar precio (opcional)</span>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                                <div class="form-group">
+                                    <label class="form-label">Nuevo PU</label>
+                                    <input asp-for="Form.NuevoPu" type="number" step="any"
+                                           class="form-control" placeholder="Dejar vacío para no cambiar" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Moneda</label>
+                                    <select asp-for="Form.NuevaMoneda" class="form-select">
+                                        <option value="">Sin cambio</option>
+                                        <option value="MXN">MXN</option>
+                                        <option value="USD">USD</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="seccionMaterialNuevo" class="form-group full-width" style="display:contents;">
+                        <div class="form-divider" style="grid-column:1/-1;">
+                            <span>Datos para material nuevo</span>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">No. Part</label>
+                            <input asp-for="Form.NoPart" class="form-control" placeholder="Número de parte" />
+                            <div class="form-text">Solo si es material nuevo</div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Marca</label>
+                            <input asp-for="Form.Marca" id="inputMarcaEntrada" class="form-control" placeholder="Marca del fabricante" />
+                            <div class="form-text">Solo si es material nuevo</div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Partida *</label>
+                            <input asp-for="Form.Partida" class="form-control" placeholder="Partida" />
+                            <div class="form-text">Solo si es material nuevo</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">PU *</label>
+                            <input asp-for="Form.Pu" type="number" step="any" class="form-control" placeholder="0.00000" />
+                            <div class="form-text">Solo si es material nuevo</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Moneda *</label>
+                            <select asp-for="Form.Moneda" class="form-select">
+                                <option value="">Seleccionar</option>
+                                <option value="MXN">MXN</option>
+                                <option value="USD">USD</option>
+                            </select>
+                            <div class="form-text">Solo si es material nuevo</div>
+                        </div>
+
+                        </div><!-- /seccionMaterialNuevo -->
+
+                        <div class="form-divider">
+                            <span>Datos de la entrada</span>
+                        </div>
+
+                        <div class="form-group full-width" style="position:relative;">
+                            <label class="form-label">Descripción *</label>
+                            <textarea asp-for="Form.Descripcion" id="inputDescripcion" class="form-control" rows="2"
+                                      placeholder="Descripción del material" autocomplete="off"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Cantidad *</label>
+                            <input asp-for="Form.Cantidad" type="number" step="0.01" class="form-control" placeholder="0.00" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">UM *</label>
+                            <input asp-for="Form.Um" class="form-control" placeholder="Pza, Kg, etc." />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Fecha compra *</label>
+                            <input asp-for="Form.FechaCompra" type="date" class="form-control" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Proveedor *</label>
+                            <select asp-for="Form.Proveedor" class="form-control form-select-oc">
+                                <option value="">— Selecciona un proveedor —</option>
+                                @foreach (var p in Model.Proveedores)
+                                {
+                                    <option value="@p">@p</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Orden de Compra</label>
+                            <select asp-for="Form.NoPo" class="form-control form-select-oc">
+                                <option value="">— Selecciona una OC —</option>
+                                @foreach (var oc in Model.OrdenesCompra)
+                                {
+                                    <option value="@oc">@oc</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">FAC</label>
+                            <input asp-for="Form.Fac" class="form-control" placeholder="Opcional" />
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Diferencia</label>
+                            <input asp-for="Form.Diferencia" class="form-control" placeholder="Opcional" />
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Proyecto</label>
+                            <select asp-for="Form.Proyecto" class="form-control form-select-oc">
+                                <option value="">— Selecciona un proyecto —</option>
+                                @foreach (var proy in Model.Proyectos)
+                                {
+                                    <option value="@proy">@proy</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn-accent" type="submit">
+                                <i class="bi bi-check-lg"></i>
+                                Guardar
+                            </button>
+                            <a class="btn-secondary-dark" asp-page="/EntradaMaterial">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                                Limpiar
+                            </a>
+                            <a class="btn-outline-dark-custom" asp-page="/Catalogo">
+                                <i class="bi bi-grid-3x3-gap"></i>
+                                Ir a catálogo
+                            </a>
+                        </div>
+
+                    </div>
+                </form>
+                </div><!-- /panelEntrada -->
+
+                <!-- Panel Devolución -->
+                <div id="panelDevolucion" style="display:none">
+                <form method="post" asp-page-handler="Devolucion" class="form-dark">
+                    <input type="hidden" asp-for="DevForm.CodFab" id="devInputCodFab" />
+                    <input type="hidden" asp-for="DevForm.CodInt" id="devInputCodInt" />
+                    <div class="form-grid">
+
+                        <div class="form-group full-width" style="position:relative;">
+                            <label class="form-label">Código *</label>
+                            <input id="devInputCodDisplay" class="form-control"
+                                   placeholder="Buscar por código o descripción..."
+                                   autocomplete="off" />
+                        </div>
+
+                        <div class="form-divider"><span>Datos de la devolución</span></div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Descripción *</label>
+                            <textarea asp-for="DevForm.Descripcion" id="devInputDescripcion" class="form-control"
+                                      rows="2" placeholder="Descripción del material" autocomplete="off"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Cantidad *</label>
+                            <input asp-for="DevForm.Cantidad" type="number" step="0.01" class="form-control" placeholder="0.00" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">UM</label>
+                            <input asp-for="DevForm.Um" id="devInputUm" class="form-control" placeholder="Pza, Kg, etc." />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Fecha devolución *</label>
+                            <input asp-for="DevForm.FechaDevolucion" type="date" class="form-control" />
+                        </div>
+
+                        <div class="form-group" style="position:relative;">
+                            <label class="form-label">Quién devuelve</label>
+                            <input asp-for="DevForm.Devuelve" id="devInputDevuelve" class="form-control"
+                                   placeholder="Nombre o área" autocomplete="off" />
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Motivo</label>
+                            <input asp-for="DevForm.Motivo" class="form-control" placeholder="Razón de la devolución" />
+                        </div>
+
+                        <div class="form-group full-width" style="position:relative;">
+                            <label class="form-label">Proyecto</label>
+                            <input asp-for="DevForm.Proyecto" id="devInputProyecto" class="form-control"
+                                   placeholder="Número de cotización..." autocomplete="off" />
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Observaciones</label>
+                            <textarea asp-for="DevForm.Obs" class="form-control" rows="2" placeholder="Opcional"></textarea>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn-accent" type="submit">
+                                <i class="bi bi-check-lg"></i> Guardar
+                            </button>
+                            <a class="btn-secondary-dark" href="/EntradaMaterial?mode=devolucion">
+                                <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+                            </a>
+                        </div>
+
+                    </div>
+                </form>
+                </div><!-- /panelDevolucion -->
+            </div>
+        </div>
+
+        <!-- HISTORIAL (panel derecho) -->
+        <div class="card-dark" style="overflow:hidden;">
+            <div class="coda-tab-bar">
+                <button type="button" id="btnHistEntrada" class="coda-tab active" onclick="setHistMode('entrada')">Entradas</button>
+                <button type="button" id="btnHistDevolucion" class="coda-tab" onclick="setHistMode('devolucion')">Devoluciones</button>
+                <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+                    <button type="button" id="btnImprimirEntradasSel" class="btn-imprimir-sel" onclick="imprimirEntradasSeleccionadas()" disabled>
+                        <i class="bi bi-printer"></i> Imprimir seleccionados<span class="sel-count-entradas"></span>
+                    </button>
+                    <span id="histBadge" class="coda-count">@Model.TotalRecords registros</span>
+                </div>
+            </div>
+            <!-- Panel historial entradas -->
+            <div id="panelHistorialEntrada">
+            <div class="card-dark-body" style="padding-bottom:.5rem;">
+                <!-- Filtros -->
+                <div class="filter-bar">
+                    <form method="get" id="frmFiltrosEntrada" class="filter-form">
+                    <input type="hidden" name="HistMode" value="entrada" />
+                        <div class="filter-field" style="position:relative">
+                            <label>Código</label>
+                            <input name="FiltCodigo" id="feaCodigo" value="@Model.FiltCodigo"
+                                   placeholder="Buscar..." autocomplete="off" class="filter-input" />
+                        </div>
+                        <div class="filter-field" style="position:relative">
+                            <label>Descripción</label>
+                            <input name="FiltDesc" id="feaDesc" value="@Model.FiltDesc"
+                                   placeholder="Buscar..." autocomplete="off" class="filter-input" />
+                        </div>
+                        <div class="filter-field">
+                            <label>Cantidad</label>
+                            <input name="FiltCantidad" type="number" step="0.01"
+                                   value="@Model.FiltCantidad" placeholder="Exacta" class="filter-input" />
+                        </div>
+                        <div class="filter-field">
+                            <label>Fecha</label>
+                            <input name="FiltFecha" type="date"
+                                   value="@Model.FiltFecha" class="filter-input" />
+                        </div>
+                        <div class="filter-field" style="position:relative">
+                            <label>Proveedor</label>
+                            <input name="FiltProveedor" id="feaProv" value="@Model.FiltProveedor"
+                                   placeholder="Buscar..." autocomplete="off" class="filter-input" />
+                        </div>
+                        <div class="filter-field" style="position:relative">
+                            <label>No. PO</label>
+                            <input name="FiltNoPo" id="feaNoPo" value="@Model.FiltNoPo"
+                                   placeholder="Buscar..." autocomplete="off" class="filter-input" />
+                        </div>
+                        <div class="filter-field" style="position:relative">
+                            <label>Facturación</label>
+                            <input name="FiltFac" id="feaFac" value="@Model.FiltFac"
+                                   placeholder="Buscar..." autocomplete="off" class="filter-input" />
+                        </div>
+                        <div class="filter-actions">
+                            <button type="submit" class="btn-filter-apply">
+                                <i class="bi bi-search"></i> Buscar
+                            </button>
+                            <a href="/EntradaMaterial" class="btn-filter-clear">
+                                <i class="bi bi-x-lg"></i> Limpiar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <!-- Tabla scrolleable -->
+            <div class="mini-cat-wrapper">
+                <table class="table-dark-custom">
+                    <thead>
+                        <tr>
+                            <th class="th-chk">
+                                <label class="lns-checkbox">
+                                    <input type="checkbox" id="chkTodosEntrada" onchange="toggleTodosEntrada(this)">
+                                    <span></span>
+                                </label>
+                            </th>
+                            <th>ID</th>
+                            <th>CÓDIGO</th>
+                            <th>DESCRIPCIÓN</th>
+                            <th>MARCA</th>
+                            <th class="text-right">CANTIDAD</th>
+                            <th>PROVEEDOR</th>
+                            <th>NO. PO</th>
+                            <th>FECHA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.Ultimas)
+                        {
+                            <tr>
+                                <td class="td-chk">
+                                    <label class="lns-checkbox">
+                                        <input type="checkbox" class="chk-entrada" data-id="@r.Id" onchange="actualizarBotonEntrada()">
+                                        <span></span>
+                                    </label>
+                                </td>
+                                <td>@r.Id</td>
+                                <td><span class="td-codigo">@r.CodFab</span></td>
+                                <td><span class="cell-desc" title="@r.Descripcion">@r.Descripcion</span></td>
+                                <td class="cell-sec">@(r.Marca ?? "—")</td>
+                                <td class="text-right">
+                                    <div class="qty-wrap">
+                                        @r.Cantidad.ToString("N2")
+                                        <span class="um-tag">@r.Um</span>
+                                    </div>
+                                </td>
+                                <td class="cell-sec">@r.Proveedor</td>
+                                <td class="cell-sec">@(r.NoPo ?? "—")</td>
+                                <td class="cell-date">@r.FechaCompra.ToString("yyyy-MM-dd")</td>
+                            </tr>
+                        }
+                        @if (!Model.Ultimas.Any())
+                        {
+                            <tr class="empty-row"><td colspan="9">Sin registros</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            </div><!-- /panelHistorialEntrada -->
+
+            <!-- Panel historial devoluciones -->
+            <div id="panelHistorialDevolucion" style="display:none">
+            <div class="card-dark-body" style="padding-bottom:.5rem;">
+                <div class="filter-bar">
+                    <form method="get" id="frmFiltrosDev" class="filter-form">
+                    <input type="hidden" name="HistMode" value="devolucion" />
+                    @if (Model.ShowDevolucion) { <input type="hidden" name="mode" value="devolucion" /> }
+                        <div class="filter-field" style="position:relative">
+                            <label>Código</label>
+                            <input name="FiltDevCodigo" id="fhdCodigo" value="@Model.FiltDevCodigo"
+                                   placeholder="Buscar..." autocomplete="off" class="filter-input" />
+                        </div>
+                        <div class="filter-field" style="position:relative">
+                            <label>Descripción</label>
+                            <input name="FiltDevDesc" id="fhdDesc" value="@Model.FiltDevDesc"
+                                   placeholder="Buscar..." autocomplete="off" class="filter-input" />
+                        </div>
+                        <div class="filter-field">
+                            <label>Fecha</label>
+                            <input name="FiltDevFecha" type="date" value="@Model.FiltDevFecha" class="filter-input" />
+                        </div>
+                        <div class="filter-field" style="position:relative">
+                            <label>Proyecto</label>
+                            <input name="FiltDevProy" id="fhdProy" value="@Model.FiltDevProy"
+                                   placeholder="Buscar..." autocomplete="off" class="filter-input" />
+                        </div>
+                        <div class="filter-field" style="position:relative">
+                            <label>Quién devuelve</label>
+                            <input name="FiltDevDevuelve" id="fhdDevuelve" value="@Model.FiltDevDevuelve"
+                                   placeholder="Buscar..." autocomplete="off" class="filter-input" />
+                        </div>
+                        <div class="filter-actions">
+                            <button type="submit" class="btn-filter-apply">
+                                <i class="bi bi-search"></i> Buscar
+                            </button>
+                            <a href="/EntradaMaterial?HistMode=devolucion" class="btn-filter-clear">
+                                <i class="bi bi-x-lg"></i> Limpiar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="mini-cat-wrapper">
+                <table class="table-dark-custom">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>CÓDIGO</th>
+                            <th>DESCRIPCIÓN</th>
+                            <th class="text-right">CANTIDAD</th>
+                            <th>QUIÉN DEVUELVE</th>
+                            <th>MOTIVO</th>
+                            <th>PROYECTO</th>
+                            <th>FECHA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.UltimasDev)
+                        {
+                            <tr>
+                                <td>@r.Id</td>
+                                <td><span class="td-codigo">@r.CodFab</span></td>
+                                <td><span class="cell-desc" title="@r.Descripcion">@r.Descripcion</span></td>
+                                <td class="text-right">
+                                    <div class="qty-wrap">
+                                        @r.Cantidad.ToString("N2")
+                                        <span class="um-tag">@r.Um</span>
+                                    </div>
+                                </td>
+                                <td class="cell-sec">@(r.Devuelve ?? "—")</td>
+                                <td class="cell-sec"><span class="cell-desc" title="@r.Motivo">@(r.Motivo ?? "—")</span></td>
+                                <td class="cell-sec">@(r.Proyecto ?? "—")</td>
+                                <td class="cell-date">@r.FechaDevolucion.ToString("yyyy-MM-dd")</td>
+                            </tr>
+                        }
+                        @if (!Model.UltimasDev.Any())
+                        {
+                            <tr class="empty-row"><td colspan="8">Sin registros</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            </div><!-- /panelHistorialDevolucion -->
+        </div>
+
+
+    </div>
+</div>
+
+<style>
+    /* ── Coda-style tab bar ── */
+    .coda-tab-bar {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+    }
+    .coda-tab {
+        padding: 13px 16px;
+        border: none;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        color: var(--text-muted);
+        font-size: .84rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: color .15s, border-color .15s;
+        margin-bottom: -1px;
+        white-space: nowrap;
+    }
+    .coda-tab.active {
+        color: var(--text-primary);
+        border-bottom-color: var(--accent-primary);
+        font-weight: 600;
+    }
+    .coda-tab:hover:not(.active) { color: var(--text-primary); }
+    .coda-count {
+        margin-left: auto;
+        font-size: .72rem;
+        color: #64748b;
+        font-weight: 500;
+        letter-spacing: .02em;
+    }
+
+    .entrada-page {
+        width: 100%;
+    }
+
+    .entrada-grid {
+        display: grid;
+        grid-template-columns: 440px 1fr;
+        gap: 0 20px;
+        align-items: start;
+    }
+
+    @@media (max-width: 1100px) {
+        .entrada-grid { grid-template-columns: 380px 1fr; }
+    }
+
+    @@media (max-width: 860px) {
+        .entrada-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Tabs del formulario (Entrada / Devolución) ── */
+    .form-tab-bar {
+        border-radius: 10px 10px 0 0;
+    }
+    .form-tab-bar .coda-tab {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .form-tab-bar .coda-tab i {
+        font-size: .85rem;
+    }
+
+    /* Form Grid */
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+
+    /* ── Divisor de secciones suavizado ── */
+    .form-divider {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 16px 0 2px;
+        color: #334155;
+        font-size: .75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .07em;
+    }
+    .form-divider::before {
+        content: '';
+        width: 3px;
+        height: 14px;
+        background: #2563eb;
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
+    .form-divider::after { display: none; }
+
+    /* ── Labels — negros y definidos ── */
+    .entrada-page .form-dark .form-label {
+        font-size: .83rem;
+        font-weight: 600;
+        color: #0f172a;
+        text-transform: none;
+        letter-spacing: .01em;
+        margin-bottom: 4px;
+    }
+
+    /* ── Inputs — estilo cápsula (Form B) ── */
+    .entrada-page .form-dark .form-control,
+    .entrada-page .form-dark .form-select {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 50px;
+        background: #f5f7fa;
+        font-size: .92rem;
+        color: #0f172a;
+        padding: 10px 18px;
+        box-shadow: none;
+        transition: border-color .18s, background .18s, box-shadow .18s;
+    }
+    .entrada-page .form-dark .form-control:focus,
+    .entrada-page .form-dark .form-select:focus {
+        border-color: #93c5fd;
+        background: #ffffff;
+        box-shadow: 0 0 0 3px rgba(147,197,253,.25);
+        outline: none;
+    }
+    .entrada-page .form-dark .form-control::placeholder {
+        color: #a0aec0;
+        font-size: .88rem;
+    }
+    .entrada-page .form-dark .form-control[readonly] {
+        border-color: #e9edf5;
+        color: #64748b;
+        background: #f0f3f8;
+        cursor: not-allowed;
+    }
+    /* Textareas — border-radius moderado (no cápsula) */
+    .entrada-page .form-dark textarea.form-control {
+        border-radius: 14px;
+        padding: 10px 16px;
+    }
+    /* Select — flecha personalizada */
+    .entrada-page .form-dark .form-select {
+        -webkit-appearance: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2364748b' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 16px center;
+        padding-right: 36px;
+    }
+
+    /* ── Helper text ── */
+    .entrada-page .form-dark .form-text {
+        font-size: .72rem;
+        color: #94a3b8;
+        margin-top: 3px;
+        font-style: italic;
+    }
+
+    /* ── form-grid con más respiro ── */
+    .entrada-page .form-grid {
+        gap: 20px;
+    }
+
+    /* Padding del panel del formulario */
+    .entrada-page .card-dark > .card-dark-body {
+        padding: 22px 24px 28px;
+    }
+
+    .form-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 12px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+    }
+
+    /* ── Historial / mini catálogo ── */
+    .mini-cat-wrapper {
+        max-height: 520px;
+        overflow-y: auto;
+        overflow-x: auto;
+    }
+    .mini-cat-wrapper::-webkit-scrollbar { width: 6px; height: 6px; }
+    .mini-cat-wrapper::-webkit-scrollbar-track { background: transparent; }
+    .mini-cat-wrapper::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+    .mini-desc {
+        display: inline-block;
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: .83rem;
+    }
+
+    .cell-muted { color: var(--text-muted); font-size: .82rem; }
+    .mono { font-family: monospace; }
+
+    /* ══════════════════════════════════════
+       TABLA  —  Registro industrial (light)
+       Todos los valores son hex explícito.
+       Sin rgba(), sin variables que resuelvan
+       a colores invisibles sobre fondo blanco.
+       ══════════════════════════════════════ */
+
+    .entrada-page .table-dark-custom {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    /* Encabezado: fondo navy sólido, texto blanco */
+    .entrada-page .table-dark-custom thead {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+    .entrada-page .table-dark-custom thead th {
+        background: #1e3a6e;
+        color: #a8c0e0;
+        font-size: .67rem;
+        font-weight: 700;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        padding: 11px 14px;
+        border: none;
+        white-space: nowrap;
+    }
+    .entrada-page .table-dark-custom thead th:first-child {
+        color: #6a90bc;  /* ID col más discreta */
+    }
+
+    /* Filas alternadas — más color */
+    .entrada-page .table-dark-custom tbody tr {
+        border-bottom: 1px solid #e4ecf9;
+        transition: background .12s;
+    }
+    .entrada-page .table-dark-custom tbody tr:nth-child(even) {
+        background: #eef3ff;   /* azul muy suave */
+    }
+    .entrada-page .table-dark-custom tbody tr:nth-child(odd) {
+        background: #ffffff;
+    }
+    .entrada-page .table-dark-custom tbody tr:last-child {
+        border-bottom: none;
+    }
+    .entrada-page .table-dark-custom tbody tr:hover {
+        background: #dbeafe !important;
+        outline: 1.5px solid #93c5fd;
+        outline-offset: -1px;
+    }
+
+    /* Celdas base */
+    .entrada-page .table-dark-custom tbody td {
+        padding: 12px 14px;
+        vertical-align: middle;
+        font-size: .9rem;
+        color: #1b2a45;
+    }
+
+    /* ID — referencia numérica */
+    .entrada-page .table-dark-custom tbody td:first-child {
+        color: #7ea8cc;
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .78rem;
+        width: 46px;
+        padding-right: 6px;
+        font-weight: 600;
+    }
+
+    /* Código — pill azul más saturado */
+    .td-codigo {
+        display: inline-block;
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .82rem;
+        font-weight: 700;
+        color: #1d4ed8;
+        background: #eff6ff;
+        border: 1.5px solid #93c5fd;
+        border-radius: 6px;
+        padding: 3px 9px;
+        line-height: 1.5;
+        letter-spacing: .01em;
+        white-space: nowrap;
+    }
+
+    /* Descripción */
+    .cell-desc {
+        display: inline-block;
+        color: #0f172a;
+        font-size: .9rem;
+        font-weight: 500;
+        max-width: 260px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Metadatos */
+    .cell-sec {
+        color: #334155;
+        font-size: .85rem;
+    }
+
+    /* Cantidad + UM */
+    .qty-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .92rem;
+        font-weight: 700;
+        color: #1e3a6e;
+    }
+    .um-tag {
+        font-family: system-ui, sans-serif;
+        font-size: .63rem;
+        font-weight: 700;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        padding: 3px 7px;
+        border-radius: 5px;
+        background: #2563eb;
+        color: #ffffff;
+        flex-shrink: 0;
+    }
+
+    /* Fecha */
+    .cell-date {
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .8rem;
+        color: #475569;
+        white-space: nowrap;
+        letter-spacing: .01em;
+    }
+
+    /* Sin registros */
+    .empty-row td {
+        text-align: center;
+        color: #94a3b8;
+        padding: 3rem !important;
+        font-size: .85rem;
+    }
+
+    /* ── Barra de filtros (idéntico a SalidaMaterial) ── */
+    .filter-bar { padding: .9rem 1rem .5rem; border-bottom: 1px solid var(--border-color); }
+    .filter-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    .filter-field { display: flex; flex-direction: column; gap: 4px; min-width: 120px; flex: 1; }
+    .filter-field label { font-size: .7rem; color: #64748b; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+    .filter-input { padding: .32rem .55rem; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: .82rem; width: 100%; }
+    .filter-input:focus { border-color: var(--accent-primary); outline: none; }
+    .filter-actions { display: flex; gap: 7px; align-items: flex-end; flex-shrink: 0; }
+    .btn-filter-apply { padding: .32rem .8rem; background: var(--accent-primary); color: #000; border: none; border-radius: 6px; font-size: .82rem; cursor: pointer; white-space: nowrap; }
+    .btn-filter-apply:hover { opacity: .88; }
+    .btn-filter-clear { padding: .32rem .8rem; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; font-size: .82rem; text-decoration: none; white-space: nowrap; }
+    .btn-filter-clear:hover { border-color: var(--accent-primary); }
+
+    /* ── Autocomplete filtros (idéntico a SalidaMaterial) ── */
+    .ac-salida-dropdown { position: fixed; background: var(--bg-secondary); border: 1px solid var(--accent-primary); border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,.7); z-index: 99999; overflow-y: auto; min-width: 200px; }
+    .ac-salida-item { padding: .55rem .85rem; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,.03); transition: background .15s; }
+    .ac-salida-item:last-child { border-bottom: none; }
+    .ac-salida-item:hover, .ac-salida-item.active { background: rgba(30,58,110,.13); }
+    .ac-salida-codfab { color: var(--accent-primary); font-family: monospace; font-size: .85rem; font-weight: 700; }
+
+    /* ── Autocomplete entrada ── */
+    .ac-entrada-dropdown {
+        position: fixed;
+        background: var(--bg-secondary);
+        border: 1px solid var(--accent-primary);
+        border-radius: 8px;
+        box-shadow: 0 8px 32px rgba(0,0,0,.7);
+        z-index: 99999;
+        overflow-y: auto;
+        min-width: 340px;
+    }
+    .ac-entrada-item {
+        padding: .55rem .85rem;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(0,0,0,.03);
+        transition: background .15s;
+    }
+    .ac-entrada-item:last-child { border-bottom: none; }
+    .ac-entrada-item:hover,
+    .ac-entrada-item.active { background: rgba(30,58,110,.13); }
+    .ac-entrada-codfab {
+        color: var(--accent-primary);
+        font-family: monospace;
+        font-size: .85rem;
+        font-weight: 700;
+    }
+    .ac-entrada-desc {
+        color: var(--text-primary);
+        font-size: .83rem;
+        margin-top: .1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .ac-entrada-meta {
+        color: var(--text-muted);
+        font-size: .74rem;
+        margin-top: .1rem;
+        display: flex;
+        gap: .6rem;
+        flex-wrap: wrap;
+    }
+    .ac-entrada-empty,
+    .ac-entrada-loading {
+        padding: .65rem .85rem;
+        color: var(--text-muted);
+        font-size: .82rem;
+        text-align: center;
+    }
+
+    /* ── Botón imprimir seleccionados ── */
+    .btn-imprimir-sel {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: .4rem .9rem;
+        background: #2563eb;
+        color: #ffffff;
+        border: none;
+        border-radius: 7px;
+        font-size: .82rem;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background .15s;
+    }
+    .btn-imprimir-sel:hover:not(:disabled) { background: #1d4ed8; }
+    .btn-imprimir-sel:disabled {
+        background: #93aecb;
+        cursor: not-allowed;
+        opacity: .7;
+    }
+
+    /* ── Columna checkbox ── */
+    .th-chk, .td-chk {
+        width: 44px;
+        text-align: center;
+        padding: 8px 6px !important;
+    }
+
+    /* ── Custom checkbox (lns-checkbox) — paleta azul tabla ── */
+    .lns-checkbox {
+        display: inline-flex;
+        align-items: center;
+        line-height: 1;
+        border-radius: 5px;
+        background-color: transparent;
+        padding: 4px 5px;
+        user-select: none;
+        cursor: pointer;
+        margin: 0;
+    }
+    .lns-checkbox span {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+    .lns-checkbox input[type="checkbox"] {
+        position: absolute;
+        clip: rect(1px, 1px, 1px, 1px);
+        padding: 0;
+        border: 0;
+        height: 1px;
+        width: 1px;
+        overflow: hidden;
+    }
+    /* Caja base — azul muy claro con borde azul medio */
+    .lns-checkbox span::before {
+        content: "";
+        display: inline-block;
+        border-radius: 4px;
+        background-color: #dbeafe;
+        height: 18px;
+        width: 18px;
+        border: 1.5px solid #93c5fd;
+        flex-shrink: 0;
+        transition: border-color .15s, background-color .15s;
+    }
+    /* Relleno (tick) — invisible por defecto */
+    .lns-checkbox span::after {
+        content: "";
+        display: inline-block;
+        height: 10px;
+        width: 10px;
+        border-radius: 2px;
+        background-color: transparent;
+        left: 4px;
+        position: absolute;
+        transition: background-color .15s;
+    }
+    /* Checked: caja azul oscuro + relleno azul brillante */
+    .lns-checkbox input[type="checkbox"]:checked + span::before {
+        background-color: #1e3a6e;
+        border-color: #1e3a6e;
+    }
+    .lns-checkbox input[type="checkbox"]:checked + span::after {
+        background-color: #93c5fd;
+    }
+    /* Focus */
+    .lns-checkbox input[type="checkbox"]:focus + span::before {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(37,99,235,.25);
+    }
+    /* Hover en la fila */
+    .lns-checkbox:hover span::before {
+        border-color: #2563eb;
+        background-color: #bfdbfe;
+    }
+    /* Checkbox en el encabezado oscuro */
+    thead .lns-checkbox span::before {
+        background-color: #2a4a80;
+        border-color: #5c82b8;
+    }
+    thead .lns-checkbox:hover span::before {
+        background-color: #345898;
+        border-color: #93c5fd;
+    }
+    thead .lns-checkbox input[type="checkbox"]:checked + span::before {
+        background-color: #2563eb;
+        border-color: #93c5fd;
+    }
+    thead .lns-checkbox input[type="checkbox"]:checked + span::after {
+        background-color: #e0f0ff;
+    }
+</style>
+
+@section Scripts {
+<script>
+(function () {
+    // Campos del formulario
+    const flds = {
+        codFab:      document.getElementById('inputCodFab'),
+        codInt:      document.getElementById('inputCodInt'),
+        noPart:      document.getElementById('Form_NoPart'),
+        partida:     document.getElementById('Form_Partida'),
+        marca:       document.getElementById('inputMarcaEntrada'),
+        descripcion: document.getElementById('inputDescripcion'),  // mismo elemento, id explícito
+        um:          document.getElementById('Form_Um'),
+        proveedor:   document.getElementById('Form_Proveedor'),
+        pu:          document.getElementById('Form_Pu'),
+        moneda:      document.getElementById('Form_Moneda'),
+    };
+
+    function escHtml(s) {
+        return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function debounce(fn, ms) {
+        let t;
+        return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+    }
+
+    const seccionNuevo        = document.getElementById('seccionMaterialNuevo');
+    const badgeExistente      = document.getElementById('badgeMaterialExistente');
+    const seccionActPrecio    = document.getElementById('seccionActualizarPrecio');
+    const hiddenExisting      = document.getElementById('hiddenIsExisting');
+
+    function setModoExistente(esExistente) {
+        if (esExistente) {
+            seccionNuevo.style.display      = 'none';
+            badgeExistente.style.display    = 'block';
+            seccionActPrecio.style.display  = 'block';
+            hiddenExisting.value            = 'true';
+        } else {
+            seccionNuevo.style.display      = 'contents';
+            badgeExistente.style.display    = 'none';
+            seccionActPrecio.style.display  = 'none';
+            hiddenExisting.value            = 'false';
+        }
+    }
+
+    // Resetear modo cuando el usuario escribe manualmente
+    flds.codInt.addEventListener('input', () => {
+        setModoExistente(false);
+        flds.codFab.value = flds.codInt.value; // cod_fab = cod_int si es manual
+    });
+    flds.descripcion.addEventListener('input', () => setModoExistente(false));
+
+    // ── Llenar formulario con el material seleccionado ───────
+    function fillForm(item) {
+        flds.codFab.value      = item.codFab               || '';
+        flds.codInt.value      = item.codInt || item.codFab || ''; // fallback a cod_fab si cod_int está vacío
+        flds.noPart.value      = item.noPart      || '';
+        flds.partida.value     = item.partida     || '';
+        if (flds.marca) flds.marca.value = item.marca || '';
+        flds.descripcion.value = item.descripcion || '';
+        flds.um.value          = item.um          || '';
+        flds.proveedor.value   = item.proveedor   || '';
+        flds.pu.value          = item.pu > 0 ? item.pu : '';
+        if (flds.moneda) {
+            const m = (item.moneda || 'MXN').toUpperCase();
+            flds.moneda.value = (m === 'USD') ? 'USD' : 'MXN';
+        }
+        // El item viene del catálogo → es material existente
+        setModoExistente(true);
+    }
+
+    // ── Autocomplete genérico ────────────────────────────────
+    function makeAutocomplete(triggerInput) {
+        let dropdown  = null;
+        let activeIdx = -1;
+        let results   = [];
+
+        function position() {
+            if (!dropdown) return;
+            const rect = triggerInput.getBoundingClientRect();
+            const w    = Math.max(rect.width, 360);
+            let left   = rect.left;
+            if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+            dropdown.style.width = w + 'px';
+            dropdown.style.left  = left + 'px';
+
+            const spaceBelow = window.innerHeight - rect.bottom - 4;
+            const spaceAbove = rect.top - 4;
+            if (spaceBelow >= 120) {
+                dropdown.style.top       = (rect.bottom + 4) + 'px';
+                dropdown.style.bottom    = 'auto';
+                dropdown.style.maxHeight = Math.min(320, spaceBelow) + 'px';
+            } else {
+                dropdown.style.top       = 'auto';
+                dropdown.style.bottom    = (window.innerHeight - rect.top + 4) + 'px';
+                dropdown.style.maxHeight = Math.min(320, spaceAbove) + 'px';
+            }
+        }
+
+        function close() {
+            if (dropdown) { dropdown.remove(); dropdown = null; }
+            activeIdx = -1;
+        }
+
+        function setActive(idx) {
+            if (!dropdown) return;
+            const items = dropdown.querySelectorAll('.ac-entrada-item');
+            items.forEach(el => el.classList.remove('active'));
+            if (idx >= 0 && idx < items.length) {
+                items[idx].classList.add('active');
+                items[idx].scrollIntoView({ block: 'nearest' });
+            }
+            activeIdx = idx;
+        }
+
+        function select(idx) {
+            const item = results[idx];
+            if (!item) return;
+            fillForm(item);
+            close();
+            // Foco en cantidad tras selección
+            document.getElementById('Form_Cantidad')?.focus();
+        }
+
+        function show(items) {
+            close();
+            results   = items;
+            activeIdx = -1;
+
+            dropdown = document.createElement('div');
+            dropdown.className = 'ac-entrada-dropdown';
+
+            if (items.length === 0) {
+                dropdown.innerHTML = '<div class="ac-entrada-empty"><i class="bi bi-search me-1"></i>Sin resultados en catálogo</div>';
+            } else {
+                items.forEach((item, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'ac-entrada-item';
+                    const exist = parseFloat(item.existencia) || 0;
+                    const existColor = exist > 10 ? 'var(--accent-green)' : exist > 0 ? '#f59e0b' : 'var(--accent-red)';
+                    div.innerHTML = `
+                        <div class="ac-entrada-codfab">
+                            <i class="bi bi-upc me-1"></i>${escHtml(item.codFab)}
+                            ${item.codInt ? `<span style="color:var(--text-muted);font-size:.78rem;margin-left:.4rem;">(${escHtml(item.codInt)})</span>` : ''}
+                        </div>
+                        <div class="ac-entrada-desc">${escHtml(item.descripcion)}</div>
+                        <div class="ac-entrada-meta">
+                            ${item.um        ? `<span><i class="bi bi-rulers"></i>${escHtml(item.um)}</span>` : ''}
+                            ${item.proveedor ? `<span><i class="bi bi-building"></i>${escHtml(item.proveedor)}</span>` : ''}
+                            ${item.pu > 0    ? `<span><i class="bi bi-cash"></i>${parseFloat(item.pu).toFixed(2)} ${escHtml(item.moneda)}</span>` : ''}
+                            <span style="color:${existColor};"><i class="bi bi-box-seam"></i>Exist: ${exist.toFixed(0)}</span>
+                        </div>`;
+                    div.addEventListener('mousedown', (e) => { e.preventDefault(); select(i); });
+                    dropdown.appendChild(div);
+                });
+            }
+
+            document.body.appendChild(dropdown);
+            position();
+        }
+
+        const onReflow = () => { if (dropdown) position(); };
+        window.addEventListener('scroll', onReflow, { passive: true });
+        window.addEventListener('resize', onReflow, { passive: true });
+
+        const doSearch = debounce(async (q) => {
+            if (q.length < 1) { close(); return; }
+            close();
+            dropdown = document.createElement('div');
+            dropdown.className = 'ac-entrada-dropdown';
+            dropdown.innerHTML = '<div class="ac-entrada-loading"><i class="bi bi-hourglass-split me-1"></i>Buscando…</div>';
+            document.body.appendChild(dropdown);
+            position();
+
+            try {
+                const resp = await fetch(
+                    `/EntradaMaterial?handler=BuscarCatalogo&q=${encodeURIComponent(q)}`,
+                    { headers: { 'X-Requested-With': 'XMLHttpRequest' } }
+                );
+                const data = await resp.json();
+                show(data);
+            } catch { close(); }
+        }, 250);
+
+        triggerInput.addEventListener('input',  () => doSearch(triggerInput.value.trim()));
+        triggerInput.addEventListener('blur',   () => setTimeout(close, 160));
+        triggerInput.addEventListener('keydown', (e) => {
+            if (!dropdown) return;
+            const items = dropdown.querySelectorAll('.ac-entrada-item');
+            if      (e.key === 'ArrowDown')             { e.preventDefault(); setActive(Math.min(activeIdx + 1, items.length - 1)); }
+            else if (e.key === 'ArrowUp')               { e.preventDefault(); setActive(Math.max(activeIdx - 1, 0)); }
+            else if (e.key === 'Enter' && activeIdx >= 0){ e.preventDefault(); select(activeIdx); }
+            else if (e.key === 'Escape')                { close(); }
+        });
+    }
+
+    // Activar autocomplete en cod_int y descripción
+    if (flds.codInt)      makeAutocomplete(flds.codInt);
+    if (flds.descripcion) makeAutocomplete(flds.descripcion);
+
+    // Asegurar que codFab tenga valor al hacer submit
+    const formEl = document.querySelector('form[method="post"]');
+    if (formEl) {
+        formEl.addEventListener('submit', () => {
+            if (!flds.codFab.value && flds.codInt.value)
+                flds.codFab.value = flds.codInt.value;
+        });
+    }
+})();
+
+// ── Autocomplete filtros historial entradas (mismo patrón que SalidaMaterial) ──
+(function () {
+    function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+    function escHtml(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function makeFilterAc(inputId, handler) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        const form = document.getElementById('frmFiltrosEntrada');
+
+        let dropdown  = null;
+        let activeIdx = -1;
+        let results   = [];
+
+        function position() {
+            if (!dropdown) return;
+            const rect = input.getBoundingClientRect();
+            const w    = Math.max(rect.width, 200);
+            let left   = rect.left;
+            if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+            dropdown.style.width = w + 'px';
+            dropdown.style.left  = left + 'px';
+            const spaceBelow = window.innerHeight - rect.bottom - 4;
+            if (spaceBelow >= 80) {
+                dropdown.style.top    = (rect.bottom + 4) + 'px';
+                dropdown.style.bottom = 'auto';
+                dropdown.style.maxHeight = Math.min(220, spaceBelow) + 'px';
+            } else {
+                dropdown.style.top    = 'auto';
+                dropdown.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+                dropdown.style.maxHeight = Math.min(220, rect.top - 4) + 'px';
+            }
+        }
+
+        function close() {
+            if (dropdown) { dropdown.remove(); dropdown = null; }
+            activeIdx = -1;
+        }
+
+        function setActive(idx) {
+            if (!dropdown) return;
+            const items = dropdown.querySelectorAll('.ac-salida-item');
+            items.forEach(el => el.classList.remove('active'));
+            if (idx >= 0 && idx < items.length) {
+                items[idx].classList.add('active');
+                items[idx].scrollIntoView({ block: 'nearest' });
+            }
+            activeIdx = idx;
+        }
+
+        function select(val) {
+            input.value = val;
+            close();
+            form.submit();
+        }
+
+        function show(items) {
+            close();
+            results   = items;
+            activeIdx = -1;
+            dropdown  = document.createElement('div');
+            dropdown.className = 'ac-salida-dropdown';
+            if (items.length === 0) {
+                dropdown.innerHTML = '<div class="ac-salida-empty">Sin resultados</div>';
+            } else {
+                items.forEach((val) => {
+                    const div = document.createElement('div');
+                    div.className = 'ac-salida-item';
+                    div.innerHTML = `<div class="ac-salida-codfab">${escHtml(val)}</div>`;
+                    div.addEventListener('mousedown', (e) => { e.preventDefault(); select(val); });
+                    dropdown.appendChild(div);
+                });
+            }
+            document.body.appendChild(dropdown);
+            position();
+        }
+
+        window.addEventListener('scroll', () => { if (dropdown) position(); }, { passive: true });
+        window.addEventListener('resize', () => { if (dropdown) position(); }, { passive: true });
+
+        const doSearch = debounce(async (q) => {
+            if (q.length < 1) { close(); return; }
+            try {
+                const resp = await fetch(`/EntradaMaterial?handler=${handler}&q=${encodeURIComponent(q)}`,
+                    { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                show(await resp.json());
+            } catch { close(); }
+        }, 250);
+
+        input.addEventListener('input',  () => doSearch(input.value.trim()));
+        input.addEventListener('blur',   () => setTimeout(close, 160));
+        input.addEventListener('keydown', (e) => {
+            if (!dropdown) return;
+            const items = dropdown.querySelectorAll('.ac-salida-item');
+            if      (e.key === 'ArrowDown')              { e.preventDefault(); setActive(Math.min(activeIdx + 1, items.length - 1)); }
+            else if (e.key === 'ArrowUp')                { e.preventDefault(); setActive(Math.max(activeIdx - 1, 0)); }
+            else if (e.key === 'Enter' && activeIdx >= 0){ e.preventDefault(); select(results[activeIdx]); }
+            else if (e.key === 'Escape')                 { close(); }
+        });
+    }
+
+    makeFilterAc('feaCodigo', 'SugCodigo');
+    makeFilterAc('feaDesc',   'SugDesc');
+    makeFilterAc('feaProv',   'SugProv');
+    makeFilterAc('feaNoPo',   'SugNoPo');
+    makeFilterAc('feaFac',    'SugFac');
+
+    // Dev historial filters (uses different form: frmFiltrosDev)
+    function makeFilterAcForm(inputId, handler, formId) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        const form = document.getElementById(formId);
+
+        let dropdown  = null;
+        let activeIdx = -1;
+        let results   = [];
+
+        function position() {
+            if (!dropdown) return;
+            const rect = input.getBoundingClientRect();
+            const w    = Math.max(rect.width, 200);
+            let left   = rect.left;
+            if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+            dropdown.style.width = w + 'px'; dropdown.style.left = left + 'px';
+            const spaceBelow = window.innerHeight - rect.bottom - 4;
+            if (spaceBelow >= 80) { dropdown.style.top = (rect.bottom + 4) + 'px'; dropdown.style.bottom = 'auto'; dropdown.style.maxHeight = Math.min(220, spaceBelow) + 'px'; }
+            else { dropdown.style.top = 'auto'; dropdown.style.bottom = (window.innerHeight - rect.top + 4) + 'px'; dropdown.style.maxHeight = Math.min(220, rect.top - 4) + 'px'; }
+        }
+        function close() { if (dropdown) { dropdown.remove(); dropdown = null; } activeIdx = -1; }
+        function setActive(idx) {
+            if (!dropdown) return;
+            dropdown.querySelectorAll('.ac-salida-item').forEach(el => el.classList.remove('active'));
+            if (idx >= 0) { const el = dropdown.querySelectorAll('.ac-salida-item')[idx]; if (el) { el.classList.add('active'); el.scrollIntoView({ block: 'nearest' }); } }
+            activeIdx = idx;
+        }
+        function select(val) { input.value = val; close(); form.submit(); }
+        function show(items) {
+            close(); results = items; activeIdx = -1;
+            dropdown = document.createElement('div'); dropdown.className = 'ac-salida-dropdown';
+            if (!items.length) { dropdown.innerHTML = '<div class="ac-salida-item" style="color:var(--text-muted)">Sin resultados</div>'; }
+            else items.forEach(val => {
+                const div = document.createElement('div'); div.className = 'ac-salida-item';
+                div.innerHTML = `<div class="ac-salida-codfab">${escHtml(val)}</div>`;
+                div.addEventListener('mousedown', e => { e.preventDefault(); select(val); });
+                dropdown.appendChild(div);
+            });
+            document.body.appendChild(dropdown); position();
+        }
+        window.addEventListener('scroll', () => { if (dropdown) position(); }, { passive: true });
+        window.addEventListener('resize', () => { if (dropdown) position(); }, { passive: true });
+        const doSearch = debounce(async (q) => {
+            if (q.length < 1) { close(); return; }
+            try { show(await (await fetch(`/EntradaMaterial?handler=${handler}&q=${encodeURIComponent(q)}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })).json()); }
+            catch { close(); }
+        }, 250);
+        input.addEventListener('input',  () => doSearch(input.value.trim()));
+        input.addEventListener('blur',   () => setTimeout(close, 160));
+        input.addEventListener('keydown', (e) => {
+            if (!dropdown) return;
+            const items = dropdown.querySelectorAll('.ac-salida-item');
+            if      (e.key === 'ArrowDown')              { e.preventDefault(); setActive(Math.min(activeIdx + 1, items.length - 1)); }
+            else if (e.key === 'ArrowUp')                { e.preventDefault(); setActive(Math.max(activeIdx - 1, 0)); }
+            else if (e.key === 'Enter' && activeIdx >= 0){ e.preventDefault(); select(results[activeIdx]); }
+            else if (e.key === 'Escape')                 { close(); }
+        });
+    }
+
+    makeFilterAcForm('fhdCodigo',   'SugDevCodigo',  'frmFiltrosDev');
+    makeFilterAcForm('fhdDesc',     'SugDevDesc',    'frmFiltrosDev');
+    makeFilterAcForm('fhdProy',     'SugDevProy',    'frmFiltrosDev');
+    makeFilterAcForm('fhdDevuelve', 'SugDevuelve',   'frmFiltrosDev');
+
+})();
+
+// Autocomplete Proyecto — scope global para oninput
+let _acPrDrop = null, _acPrTimer = null;
+function acProyectoEntrada(inp) {
+    clearTimeout(_acPrTimer);
+    if (_acPrDrop) { _acPrDrop.remove(); _acPrDrop = null; }
+    const q = inp.value.trim();
+    if (q.length < 1) return;
+    _acPrTimer = setTimeout(() => {
+        fetch('?handler=SugProyecto&q=' + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(list => {
+                if (_acPrDrop) { _acPrDrop.remove(); _acPrDrop = null; }
+                if (!list.length) return;
+                const rect = inp.getBoundingClientRect();
+                _acPrDrop = document.createElement('div');
+                _acPrDrop.className = 'ac-salida-dropdown';
+                _acPrDrop.style.cssText = `position:fixed;top:${rect.bottom}px;left:${rect.left}px;min-width:${rect.width}px;z-index:9999;`;
+                list.forEach(item => {
+                    const d = document.createElement('div');
+                    d.className = 'ac-salida-item';
+                    d.style.cssText = 'display:flex;gap:12px;align-items:baseline;';
+                    const spanNum = document.createElement('span');
+                    spanNum.textContent = item.num;
+                    spanNum.style.cssText = 'min-width:60px;font-weight:600;flex-shrink:0;';
+                    const spanNombre = document.createElement('span');
+                    spanNombre.textContent = item.nombre;
+                    spanNombre.style.cssText = 'color:#6b7280;font-size:.85em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+                    d.appendChild(spanNum);
+                    d.appendChild(spanNombre);
+                    d.addEventListener('mousedown', e => {
+                        e.preventDefault();
+                        inp.value = item.num;
+                        _acPrDrop.remove(); _acPrDrop = null;
+                    });
+                    _acPrDrop.appendChild(d);
+                });
+                document.body.appendChild(_acPrDrop);
+            });
+    }, 250);
+}
+document.addEventListener('click', e => {
+    const inp = document.getElementById('inputProyectoEntrada');
+    if (_acPrDrop && inp && !inp.contains(e.target)) { _acPrDrop.remove(); _acPrDrop = null; }
+});
+
+// ── Selección de entradas para imprimir ──
+function actualizarBotonEntrada() {
+    const checked = document.querySelectorAll('.chk-entrada:checked');
+    const todos = document.querySelectorAll('.chk-entrada');
+    const chkTodos = document.getElementById('chkTodosEntrada');
+    if (chkTodos) {
+        if (checked.length === 0)               chkTodos.indeterminate = false, chkTodos.checked = false;
+        else if (checked.length === todos.length) chkTodos.indeterminate = false, chkTodos.checked = true;
+        else                                     chkTodos.indeterminate = true;
+    }
+
+    const btn = document.getElementById('btnImprimirEntradasSel');
+    if (btn) {
+        btn.disabled = checked.length === 0;
+        const countEl = btn.querySelector('.sel-count-entradas');
+        if (countEl) countEl.textContent = checked.length ? ` (${checked.length})` : '';
+    }
+}
+
+function toggleTodosEntrada(chkAll) {
+    document.querySelectorAll('.chk-entrada').forEach(c => c.checked = chkAll.checked);
+    actualizarBotonEntrada();
+}
+
+function imprimirEntradasSeleccionadas() {
+    const ids = Array.from(document.querySelectorAll('.chk-entrada:checked'))
+        .map(c => c.dataset.id)
+        .filter(Boolean);
+    if (ids.length === 0) return;
+    window.open('/ImprimirEntradas?ids=' + ids.join(','), '_blank');
+}
+
+// ── Historial mode toggle ──
+function setHistMode(mode) {
+    const isDev = mode === 'devolucion';
+    document.getElementById('panelHistorialEntrada').style.display    = isDev ? 'none'  : 'block';
+    document.getElementById('panelHistorialDevolucion').style.display = isDev ? 'block' : 'none';
+    document.getElementById('btnHistEntrada').classList.toggle('active',    !isDev);
+    document.getElementById('btnHistDevolucion').classList.toggle('active',  isDev);
+    document.getElementById('histBadge').textContent = isDev
+        ? '@Model.TotalRecordsDev registros'
+        : '@Model.TotalRecords registros';
+}
+setHistMode('@(Model.HistMode == "devolucion" ? "devolucion" : "entrada")');
+
+// ── Form mode toggle ──
+function setFormMode(mode) {
+    const isDevolucion = mode === 'devolucion';
+    document.getElementById('panelEntrada').style.display    = isDevolucion ? 'none'  : 'block';
+    document.getElementById('panelDevolucion').style.display = isDevolucion ? 'block' : 'none';
+    document.getElementById('navBtnEntrada').classList.toggle('active',    !isDevolucion);
+    document.getElementById('navBtnDevolucion').classList.toggle('active',  isDevolucion);
+}
+setFormMode('@(Model.ShowDevolucion ? "devolucion" : "entrada")');
+
+// ── Devolución form autocomplete ──
+(function () {
+    function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+    function escHtml(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // Simple text autocomplete (for filtros like Devuelve, Proyecto)
+    function makeSimpleAc(inputId, handler) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        let dropdown = null, activeIdx = -1, results = [];
+
+        function position() {
+            if (!dropdown) return;
+            const rect = input.getBoundingClientRect();
+            const w = Math.max(rect.width, 200);
+            let left = rect.left;
+            if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+            dropdown.style.width = w + 'px'; dropdown.style.left = left + 'px';
+            const spaceBelow = window.innerHeight - rect.bottom - 4;
+            if (spaceBelow >= 80) { dropdown.style.top = (rect.bottom + 4) + 'px'; dropdown.style.bottom = 'auto'; dropdown.style.maxHeight = Math.min(220, spaceBelow) + 'px'; }
+            else { dropdown.style.top = 'auto'; dropdown.style.bottom = (window.innerHeight - rect.top + 4) + 'px'; dropdown.style.maxHeight = Math.min(220, rect.top - 4) + 'px'; }
+        }
+        function close() { if (dropdown) { dropdown.remove(); dropdown = null; } activeIdx = -1; }
+        function setActive(idx) {
+            if (!dropdown) return;
+            dropdown.querySelectorAll('.ac-salida-item').forEach(el => el.classList.remove('active'));
+            if (idx >= 0) { const el = dropdown.querySelectorAll('.ac-salida-item')[idx]; if (el) { el.classList.add('active'); el.scrollIntoView({ block: 'nearest' }); } }
+            activeIdx = idx;
+        }
+        function show(items) {
+            close(); results = items; activeIdx = -1;
+            dropdown = document.createElement('div'); dropdown.className = 'ac-salida-dropdown';
+            if (!items.length) { dropdown.innerHTML = '<div class="ac-salida-item" style="color:var(--text-muted)">Sin resultados</div>'; }
+            else items.forEach((val, i) => {
+                const div = document.createElement('div'); div.className = 'ac-salida-item';
+                div.innerHTML = `<div class="ac-salida-codfab">${escHtml(val)}</div>`;
+                div.addEventListener('mousedown', e => { e.preventDefault(); input.value = val; close(); });
+                dropdown.appendChild(div);
+            });
+            document.body.appendChild(dropdown); position();
+        }
+        window.addEventListener('scroll', () => { if (dropdown) position(); }, { passive: true });
+        window.addEventListener('resize', () => { if (dropdown) position(); }, { passive: true });
+        const doSearch = debounce(async (q) => {
+            if (q.length < 1) { close(); return; }
+            try { show(await (await fetch(`/EntradaMaterial?handler=${handler}&q=${encodeURIComponent(q)}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })).json()); }
+            catch { close(); }
+        }, 250);
+        input.addEventListener('input',  () => doSearch(input.value.trim()));
+        input.addEventListener('blur',   () => setTimeout(close, 160));
+        input.addEventListener('keydown', (e) => {
+            if (!dropdown) return;
+            const items = dropdown.querySelectorAll('.ac-salida-item');
+            if      (e.key === 'ArrowDown')              { e.preventDefault(); setActive(Math.min(activeIdx + 1, items.length - 1)); }
+            else if (e.key === 'ArrowUp')                { e.preventDefault(); setActive(Math.max(activeIdx - 1, 0)); }
+            else if (e.key === 'Enter' && activeIdx >= 0){ e.preventDefault(); const r = results[activeIdx]; if (r) { input.value = r; close(); } }
+            else if (e.key === 'Escape')                 { close(); }
+        });
+    }
+
+    makeSimpleAc('devInputDevuelve',    'SugDevuelve');
+    makeSimpleAc('devInputProyecto',    'SugProyecto');
+
+    // Catalog autocomplete for devolución form (reuses BuscarCatalogo handler)
+    (function () {
+        const triggerEl   = document.getElementById('devInputCodDisplay');
+        const hidCodFab   = document.getElementById('devInputCodFab');
+        const hidCodInt   = document.getElementById('devInputCodInt');
+        const descEl      = document.getElementById('devInputDescripcion');
+        const umEl        = document.getElementById('devInputUm');
+        if (!triggerEl) return;
+        let dropdown = null, activeIdx = -1, results = [];
+
+        function position() {
+            if (!dropdown) return;
+            const rect = triggerEl.getBoundingClientRect();
+            const w = Math.max(rect.width, 360);
+            let left = rect.left;
+            if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+            dropdown.style.width = w + 'px'; dropdown.style.left = left + 'px';
+            const spaceBelow = window.innerHeight - rect.bottom - 4;
+            if (spaceBelow >= 120) { dropdown.style.top = (rect.bottom + 4) + 'px'; dropdown.style.bottom = 'auto'; dropdown.style.maxHeight = Math.min(300, spaceBelow) + 'px'; }
+            else { dropdown.style.top = 'auto'; dropdown.style.bottom = (window.innerHeight - rect.top + 4) + 'px'; dropdown.style.maxHeight = Math.min(300, rect.top - 4) + 'px'; }
+        }
+        function close() { if (dropdown) { dropdown.remove(); dropdown = null; } activeIdx = -1; }
+        function select(item) {
+            if (!item) return;
+            hidCodFab.value = item.codFab || '';
+            hidCodInt.value = item.codInt || item.codFab || '';
+            triggerEl.value = item.codFab + (item.codInt ? ' (' + item.codInt + ')' : '');
+            if (descEl) descEl.value = item.descripcion || '';
+            if (umEl)   umEl.value   = item.um || '';
+            close();
+            document.getElementById('DevForm_Cantidad')?.focus();
+        }
+        function show(items) {
+            close(); results = items; activeIdx = -1;
+            dropdown = document.createElement('div'); dropdown.className = 'ac-entrada-dropdown';
+            if (!items.length) { dropdown.innerHTML = '<div class="ac-entrada-empty"><i class="bi bi-search me-1"></i>Sin resultados</div>'; }
+            else items.forEach((item, i) => {
+                const div = document.createElement('div'); div.className = 'ac-entrada-item';
+                const exist = parseFloat(item.existencia) || 0;
+                const existColor = exist > 10 ? 'var(--accent-green)' : exist > 0 ? '#f59e0b' : 'var(--accent-red)';
+                div.innerHTML = `<div class="ac-entrada-codfab"><i class="bi bi-upc me-1"></i>${escHtml(item.codFab)}${item.codInt ? `<span style="color:var(--text-muted);font-size:.78rem;margin-left:.4rem;">(${escHtml(item.codInt)})</span>` : ''}</div><div class="ac-entrada-desc">${escHtml(item.descripcion)}</div><div class="ac-entrada-meta">${item.um ? `<span><i class="bi bi-rulers"></i>${escHtml(item.um)}</span>` : ''}<span style="color:${existColor};"><i class="bi bi-box-seam"></i>Exist: ${exist.toFixed(0)}</span></div>`;
+                div.addEventListener('mousedown', e => { e.preventDefault(); select(items[i]); });
+                dropdown.appendChild(div);
+            });
+            document.body.appendChild(dropdown); position();
+        }
+        window.addEventListener('scroll', () => { if (dropdown) position(); }, { passive: true });
+        window.addEventListener('resize', () => { if (dropdown) position(); }, { passive: true });
+        const doSearch = debounce(async (q) => {
+            if (q.length < 1) { close(); return; }
+            close();
+            dropdown = document.createElement('div'); dropdown.className = 'ac-entrada-dropdown';
+            dropdown.innerHTML = '<div class="ac-entrada-loading"><i class="bi bi-hourglass-split me-1"></i>Buscando…</div>';
+            document.body.appendChild(dropdown); position();
+            try { show(await (await fetch(`/EntradaMaterial?handler=BuscarCatalogo&q=${encodeURIComponent(q)}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })).json()); }
+            catch { close(); }
+        }, 250);
+        triggerEl.addEventListener('input',  () => doSearch(triggerEl.value.trim()));
+        triggerEl.addEventListener('blur',   () => setTimeout(close, 160));
+        triggerEl.addEventListener('keydown', (e) => {
+            if (!dropdown) return;
+            const items = dropdown.querySelectorAll('.ac-entrada-item');
+            if      (e.key === 'ArrowDown')              { e.preventDefault(); setActive(Math.min(activeIdx + 1, items.length - 1)); }
+            else if (e.key === 'ArrowUp')                { e.preventDefault(); setActive(Math.max(activeIdx - 1, 0)); }
+            else if (e.key === 'Enter' && activeIdx >= 0){ e.preventDefault(); select(results[activeIdx]); }
+            else if (e.key === 'Escape')                 { close(); }
+            function setActive(idx) {
+                dropdown.querySelectorAll('.ac-entrada-item').forEach(el => el.classList.remove('active'));
+                if (idx >= 0 && idx < items.length) { items[idx].classList.add('active'); items[idx].scrollIntoView({ block: 'nearest' }); }
+                activeIdx = idx;
+            }
+        });
+    })();
+})();
+</script>
+}

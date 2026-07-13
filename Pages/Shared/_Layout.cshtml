@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - InventarioWeb</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/InventarioWeb.styles.css" asp-append-version="true" />
+</head>
+
+<body>
+@{
+    var _path = Context.Request.Path.Value?.ToLower() ?? "";
+    bool _isHome        = _path == "/" || _path == "/index";
+    bool _isInventario  = _path.StartsWith("/catalogo") || _path.StartsWith("/entradamaterial")
+                       || _path.StartsWith("/salidamaterial") || _path.StartsWith("/devolucion")
+                       || _path.StartsWith("/entradadesde") || _path.StartsWith("/imprimirsal")
+                       || _path.StartsWith("/imprimirent") || _path.StartsWith("/volumetrias");
+    bool _isCotizaciones = _path.StartsWith("/cotizaciones") || _path.StartsWith("/nuevacotizacion")
+                        || _path.StartsWith("/editarcotizacion") || _path.StartsWith("/vercotizacion")
+                        || _path.StartsWith("/exportarcotizacion");
+
+    // Breadcrumbs
+    var _crumbs = new List<(string Label, string? Url)>();
+    if (!_isHome) {
+        if      (_path.StartsWith("/catalogo"))                                         { _crumbs.Add(("Materiales", null)); _crumbs.Add(("Catálogo", null)); }
+        else if (_path.StartsWith("/entradamaterial") || _path.StartsWith("/entradadesde")) { _crumbs.Add(("Materiales", null)); _crumbs.Add(("Entrada material", null)); }
+        else if (_path.StartsWith("/salidamaterial")  || _path.StartsWith("/imprimirsal")) { _crumbs.Add(("Materiales", null)); _crumbs.Add(("Salida material", null)); }
+        else if (_path.StartsWith("/devolucion"))                                       { _crumbs.Add(("Materiales", null)); _crumbs.Add(("Devoluciones", null)); }
+        else if (_path.StartsWith("/volumetrias"))                                      { _crumbs.Add(("Materiales", null)); _crumbs.Add(("Volumetrías", null)); }
+        else if (_path.StartsWith("/cotizaciones"))                                     { _crumbs.Add(("Cotizaciones", null)); _crumbs.Add(("Listado", null)); }
+        else if (_path.StartsWith("/nuevacotizacion"))                                  { _crumbs.Add(("Cotizaciones", "/Cotizaciones")); _crumbs.Add(("Nueva cotización", null)); }
+        else if (_path.StartsWith("/editarcotizacion"))                                 { _crumbs.Add(("Cotizaciones", "/Cotizaciones")); _crumbs.Add(("Editar", null)); }
+        else if (_path.StartsWith("/vercotizacion") || _path.StartsWith("/exportarcotizacion")) { _crumbs.Add(("Cotizaciones", "/Cotizaciones")); _crumbs.Add(("Ver cotización", null)); }
+    }
+
+    // Toast desde query params — mensajes contextuales por página
+    string? _toastMsg  = null;
+    string  _toastType = "success";
+    var     _qs        = Context.Request.Query;
+    if (_qs.ContainsKey("saved")) {
+        _toastType = "success";
+        var _sv = _qs["saved"].ToString();
+        if (_sv == "2") {
+            if      (_path.StartsWith("/entradamaterial")) _toastMsg = "Devolución registrada correctamente.";
+            else if (_path.StartsWith("/ordenescompra"))   _toastMsg = "Orden actualizada correctamente.";
+            else                                           _toastMsg = "Actualizado correctamente.";
+        } else {
+            if      (_path.StartsWith("/entradamaterial") || _path.StartsWith("/entradadesde")) _toastMsg = "Entrada registrada correctamente.";
+            else if (_path.StartsWith("/salidamaterial"))  _toastMsg = "Salida registrada correctamente.";
+            else if (_path.StartsWith("/devolucion"))      _toastMsg = "Devolución registrada correctamente.";
+            else if (_path.StartsWith("/catalogo"))        _toastMsg = "Cambios guardados correctamente.";
+            else if (_path.StartsWith("/ordenescompra"))   _toastMsg = "Orden registrada correctamente.";
+            else                                           _toastMsg = "Guardado correctamente.";
+        }
+    }
+    if (_qs["deleted"] == "1") { _toastType = "info";    _toastMsg = _path.StartsWith("/catalogo") ? "Material eliminado correctamente." : "Eliminado correctamente."; }
+    if (_qs["edited"]  == "1") { _toastType = "success"; _toastMsg = "Actualizado correctamente."; }
+    if (_qs["error"]   == "1") { _toastType = "error";   _toastMsg = "Ocurrió un error."; }
+    if (_qs["exito"]   == "1") { _toastType = "success"; _toastMsg = "Operación completada."; }
+    if (_qs["demo"]    == "1") { _toastType = "info";    _toastMsg = "Modo Demo activo — los cambios no se guardan."; }
+
+    bool _isDemoMode = Context.RequestServices.GetRequiredService<IConfiguration>().GetValue<bool>("DemoMode");
+    if (ViewData["ToastMessage"] != null) {
+        _toastMsg  = ViewData["ToastMessage"]!.ToString();
+        _toastType = ViewData["ToastType"]?.ToString() ?? "success";
+    }
+}
+
+    <nav class="sidebar-left">
+        <div class="sidebar-inner">
+            <a class="sidebar-brand" asp-area="" asp-page="/Index">
+                <span class="brand-text">InventarioWeb</span>
+            </a>
+
+            @{
+                // ── Leer sesión una sola vez para el sidebar ──
+                bool _authEnabled = Context.RequestServices.GetRequiredService<IConfiguration>().GetValue<bool>("AuthEnabled");
+                InventarioWeb.Services.UsuarioSesion? _sesionUsuario = null;
+                var _sesionJson2 = Context.Session.GetString("usuario_sesion");
+                if (!string.IsNullOrEmpty(_sesionJson2))
+                    _sesionUsuario = System.Text.Json.JsonSerializer.Deserialize<InventarioWeb.Services.UsuarioSesion>(_sesionJson2);
+
+                // Si auth está deshabilitado, mostrar todo
+                bool _verInventario   = !_authEnabled || (_sesionUsuario?.Tiene("inventario")   ?? false);
+                bool _verCotizaciones = !_authEnabled || (_sesionUsuario?.Tiene("cotizaciones") ?? false);
+                bool _verCompras      = !_authEnabled || (_sesionUsuario?.Tiene("compras")      ?? false);
+                bool _verAdmin        = !_authEnabled || (_sesionUsuario?.EsAdmin               ?? false);
+            }
+
+            <ul class="sidebar-menu">
+
+                <li>
+                    <a class="sidebar-link @(_isHome ? "sidebar-link--active" : "")" asp-page="/Index">
+                        <i class="bi bi-house-fill"></i>
+                        <span class="nav-label">Dashboard</span>
+                    </a>
+                </li>
+
+                @if (_verInventario)
+                {
+                    <li class="sidebar-section-label"><span class="nav-label">Inventario</span></li>
+                    <li class="sidebar-dropdown @(_isInventario ? "open" : "")">
+                        <span class="sidebar-link sidebar-dropdown-toggle @(_isInventario ? "sidebar-link--active" : "")"
+                              onclick="toggleSidebarDropdown(this)">
+                            <i class="bi bi-boxes"></i>
+                            <span class="nav-label">Materiales</span>
+                            <i class="bi bi-chevron-down sidebar-chevron"></i>
+                        </span>
+                        <div class="sidebar-dropdown-menu">
+                            <a class="sidebar-dropdown-item @(_path.StartsWith("/catalogo") ? "sidebar-dropdown-item--active" : "")"
+                               asp-page="/Catalogo">
+                                <i class="bi bi-grid-3x3-gap"></i>
+                                <span class="nav-label">Catálogo</span>
+                            </a>
+                            <a class="sidebar-dropdown-item @(_path.StartsWith("/entradamaterial") || _path.StartsWith("/entradadesde") ? "sidebar-dropdown-item--active" : "")"
+                               asp-page="/EntradaMaterial">
+                                <i class="bi bi-plus-circle"></i>
+                                <span class="nav-label">Entrada material</span>
+                            </a>
+                            <a class="sidebar-dropdown-item @(_path.StartsWith("/salidamaterial") || _path.StartsWith("/imprimirsal") ? "sidebar-dropdown-item--active" : "")"
+                               asp-page="/SalidaMaterial">
+                                <i class="bi bi-box-arrow-up"></i>
+                                <span class="nav-label">Salida material</span>
+                            </a>
+                            <a class="sidebar-dropdown-item @(_path.StartsWith("/devolucion") ? "sidebar-dropdown-item--active" : "")"
+                               asp-page="/Devolucion">
+                                <i class="bi bi-arrow-return-left"></i>
+                                <span class="nav-label">Devoluciones</span>
+                            </a>
+                            <a class="sidebar-dropdown-item @(_path.StartsWith("/volumetrias") ? "sidebar-dropdown-item--active" : "")"
+                               asp-page="/Volumetrias">
+                                <i class="bi bi-calculator"></i>
+                                <span class="nav-label">Volumetrías</span>
+                            </a>
+                        </div>
+                    </li>
+                }
+
+                @if (_verCotizaciones || _verCompras)
+                {
+                    <li class="sidebar-section-label"><span class="nav-label">Comercial</span></li>
+                }
+
+                @if (_verCotizaciones)
+                {
+                    <li class="sidebar-dropdown @(_isCotizaciones ? "open" : "")">
+                        <span class="sidebar-link sidebar-dropdown-toggle @(_isCotizaciones ? "sidebar-link--active" : "")"
+                              onclick="toggleSidebarDropdown(this)">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span class="nav-label">Cotizaciones</span>
+                            <i class="bi bi-chevron-down sidebar-chevron"></i>
+                        </span>
+                        <div class="sidebar-dropdown-menu">
+                            <a class="sidebar-dropdown-item @(_path.StartsWith("/cotizaciones") ? "sidebar-dropdown-item--active" : "")"
+                               asp-page="/Cotizaciones">
+                                <i class="bi bi-list-ul"></i>
+                                <span class="nav-label">Ver cotizaciones</span>
+                            </a>
+                            <a class="sidebar-dropdown-item @(_path.StartsWith("/nuevacotizacion") ? "sidebar-dropdown-item--active" : "")"
+                               asp-page="/NuevaCotizacion">
+                                <i class="bi bi-file-earmark-plus"></i>
+                                <span class="nav-label">Nueva cotización</span>
+                            </a>
+                        </div>
+                    </li>
+                }
+
+                @if (_verCompras)
+                {
+                    <li class="@(_path.StartsWith("/ordenescompra") ? "sidebar-link--active-item" : "")">
+                        <a class="sidebar-link @(_path.StartsWith("/ordenescompra") ? "sidebar-link--active" : "")"
+                           asp-page="/OrdenesCompra">
+                            <i class="bi bi-cart-check"></i>
+                            <span class="nav-label">Órdenes de compra</span>
+                        </a>
+                    </li>
+                }
+
+                @if (_verAdmin)
+                {
+                    <li class="sidebar-section-label"><span class="nav-label">Administración</span></li>
+                    <li class="@(_path.StartsWith("/admin") ? "sidebar-link--active-item" : "")">
+                        <a class="sidebar-link @(_path.StartsWith("/admin/usuarios") ? "sidebar-link--active" : "")"
+                           asp-page="/Admin/Usuarios">
+                            <i class="bi bi-people"></i>
+                            <span class="nav-label">Usuarios</span>
+                        </a>
+                    </li>
+                }
+
+            </ul>
+
+            <div class="sidebar-footer">
+                @{
+                    var _connStr = Context.RequestServices.GetRequiredService<IConfiguration>().GetConnectionString("SqlServer");
+                    int _negCount = 0;
+                    try {
+                        await using var _conn = new Microsoft.Data.SqlClient.SqlConnection(_connStr);
+                        await _conn.OpenAsync();
+                        await using var _cmd = new Microsoft.Data.SqlClient.SqlCommand(
+                            "SELECT COUNT(*) FROM inventario.catalogo_materiales WHERE cant < 0 AND cod_fab != 'ND'", _conn);
+                        _negCount = Convert.ToInt32(await _cmd.ExecuteScalarAsync());
+                    } catch { }
+                }
+                @if (_negCount > 0)
+                {
+                    <a href="/Catalogo" class="sidebar-alert-neg">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <span class="nav-label">@_negCount stock negativo</span>
+                    </a>
+                }
+                <div class="sidebar-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text nav-label">Sistema activo</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="app-main">
+
+        @if (_isDemoMode)
+        {
+            <div class="demo-banner">
+                <i class="bi bi-flask"></i>
+                <strong>MODO DEMO</strong> — Solo lectura, los cambios no se guardan
+            </div>
+        }
+
+        <header class="topbar">
+            <button class="sidebar-toggle-btn" onclick="toggleSidebar()" title="Menú">
+                <i class="bi bi-list"></i>
+            </button>
+
+            @if (_crumbs.Count > 0)
+            {
+                <nav class="topbar-breadcrumb" aria-label="breadcrumb">
+                    <a class="crumb-home" asp-page="/Index" title="Dashboard">
+                        <i class="bi bi-house"></i>
+                    </a>
+                    @foreach (var (label, url) in _crumbs)
+                    {
+                        <span class="crumb-sep"><i class="bi bi-chevron-right"></i></span>
+                        if (url != null)
+                        {
+                            <a class="crumb-link" href="@url">@label</a>
+                        }
+                        else
+                        {
+                            <span class="crumb-current">@label</span>
+                        }
+                    }
+                </nav>
+            }
+            else
+            {
+                <span class="topbar-page-title">Dashboard</span>
+            }
+
+            <div class="d-flex align-items-center gap-3 ms-auto">
+
+                @{
+                    var _sesionJson = Context.Session.GetString("usuario_sesion");
+                    var _nombreUsuario = "";
+                    if (!string.IsNullOrEmpty(_sesionJson))
+                    {
+                        var _u = System.Text.Json.JsonSerializer.Deserialize<InventarioWeb.Services.UsuarioSesion>(_sesionJson);
+                        _nombreUsuario = _u?.Nombre ?? "";
+                    }
+                }
+                @if (!string.IsNullOrEmpty(_nombreUsuario))
+                {
+                    <span class="topbar-usuario">
+                        <i class="bi bi-person-circle"></i>
+                        @_nombreUsuario
+                    </span>
+                    <a href="/Logout" class="btn btn-sm btn-outline-secondary" title="Cerrar sesión">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span class="nav-label">Salir</span>
+                    </a>
+                }
+
+                <div class="theme-toggle-wrapper" title="Cambiar modo claro/oscuro">
+                    <label class="theme-toggle-label">
+                        <input type="checkbox" id="themeToggle" class="theme-toggle-input">
+                        <span class="theme-toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            @RenderBody()
+        </main>
+
+        <footer class="footer-dark">
+            <div class="footer-container">
+                <span>&copy; 2026 InventarioWeb</span>
+                <span class="footer-separator">|</span>
+                <span>TU EMPRESA</span>
+            </div>
+        </footer>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+
+    <script>
+    /* ── Sidebar collapse (persiste en localStorage) ── */
+    (function () {
+        if (localStorage.getItem('sidebar-collapsed') === 'true') {
+            document.body.classList.add('sidebar-collapsed');
+        }
+    })();
+
+    function toggleSidebar() {
+        document.body.classList.toggle('sidebar-collapsed');
+        localStorage.setItem('sidebar-collapsed', document.body.classList.contains('sidebar-collapsed'));
+    }
+
+    function toggleSidebarDropdown(el) {
+        el.closest('.sidebar-dropdown').classList.toggle('open');
+    }
+
+    /* ── Health check ── */
+    (function () {
+        const dot = document.querySelector('.status-dot');
+        const txt = document.querySelector('.status-text');
+
+        async function checkHealth() {
+            try {
+                const res  = await fetch('/api/health', { cache: 'no-store' });
+                const data = await res.json();
+                if (data.ok) {
+                    dot.classList.remove('status-dot--error'); dot.classList.add('status-dot--ok');
+                    txt.textContent = 'Sistema activo'; txt.classList.remove('status-text--error');
+                } else {
+                    dot.classList.add('status-dot--error'); dot.classList.remove('status-dot--ok');
+                    txt.textContent = 'Sin conexión DB'; txt.classList.add('status-text--error');
+                }
+            } catch {
+                dot.classList.add('status-dot--error'); dot.classList.remove('status-dot--ok');
+                txt.textContent = 'Sin conexión'; txt.classList.add('status-text--error');
+            }
+        }
+
+        checkHealth();
+        setInterval(checkHealth, 30000);
+    })();
+
+    /* ── Toast system ── */
+    function showToast(type, message) {
+        const icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', info: 'bi-info-circle-fill' };
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = 'toast-item toast-' + type;
+        el.innerHTML = '<i class="bi ' + (icons[type] || icons.success) + '"></i>'
+                     + '<span>' + message + '</span>'
+                     + '<button class="toast-close" onclick="this.parentElement.remove()"><i class="bi bi-x"></i></button>';
+        container.appendChild(el);
+        requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('toast-visible')));
+        setTimeout(() => {
+            el.classList.remove('toast-visible');
+            setTimeout(() => el.remove(), 350);
+        }, 4500);
+    }
+
+    @if (_toastMsg != null)
+    {
+        <text>document.addEventListener('DOMContentLoaded', () => showToast('@_toastType', '@_toastMsg'));</text>
+    }
+
+    /* ── Submit button loading state ── */
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('form[method="post"]').forEach(function (form) {
+            form.addEventListener('submit', function () {
+                if (window.jQuery) {
+                    var v = $(form).data('validator');
+                    if (v && !v.form()) return;
+                }
+                var btn = form.querySelector('[type="submit"]:not([data-no-loading])');
+                if (btn && !btn.disabled) {
+                    btn.innerHTML = '<i class="bi bi-hourglass-split btn-spin"></i> Guardando…';
+                    btn.disabled = true;
+                }
+            });
+        });
+    });
+    </script>
+</body>
+</html>

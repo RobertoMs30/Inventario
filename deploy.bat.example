@@ -1,0 +1,83 @@
+@echo off
+setlocal
+title Deploy InventarioWeb
+
+rem Copia este archivo como deploy.bat y reemplaza los valores con los de tu servidor.
+rem deploy.bat esta en .gitignore para que nunca se suba con datos reales.
+
+set SERVER=TU_SERVIDOR
+set DEPLOY_PATH=RUTA_EN_SERVIDOR
+set PROJECT_PATH=%~dp0
+set PUBLISH_PATH=%~dp0publish_output
+set SERVICE_NAME=InventarioWeb
+
+echo ============================================
+echo   DEPLOY InventarioWeb
+echo   Servidor: %SERVER%
+echo   Destino:  %DEPLOY_PATH%
+echo ============================================
+echo.
+
+:: 1) Compilar
+echo [1/4] Compilando en modo Release...
+cd /d "%PROJECT_PATH%"
+dotnet publish -c Release -o "%PUBLISH_PATH%" --nologo
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: El build fallo. No se realizo el deploy.
+    pause
+    exit /b 1
+)
+echo       OK
+echo.
+
+:: 2) Detener el servicio en el servidor (si existe)
+echo [2/4] Deteniendo servicio %SERVICE_NAME% en %SERVER%...
+sc \\%SERVER% query %SERVICE_NAME% >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    sc \\%SERVER% stop %SERVICE_NAME% >nul 2>&1
+    timeout /t 3 /nobreak >nul
+    echo       OK - Servicio detenido
+) else (
+    echo       OK - Servicio no registrado aun, se omite este paso
+)
+echo.
+
+:: 3) Copiar archivos - preservar appsettings.json de produccion
+echo [3/4] Copiando archivos a %DEPLOY_PATH%...
+if exist "%DEPLOY_PATH%\appsettings.json" (
+    copy /Y "%DEPLOY_PATH%\appsettings.json" "%DEPLOY_PATH%\appsettings.json.bak" >nul
+)
+xcopy /E /Y /I "%PUBLISH_PATH%\*" "%DEPLOY_PATH%\" >nul
+if exist "%DEPLOY_PATH%\appsettings.json.bak" (
+    copy /Y "%DEPLOY_PATH%\appsettings.json.bak" "%DEPLOY_PATH%\appsettings.json" >nul
+)
+echo       OK
+echo.
+
+:: 4) Iniciar el servicio
+echo [4/4] Iniciando servicio %SERVICE_NAME% en %SERVER%...
+sc \\%SERVER% query %SERVICE_NAME% >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    sc \\%SERVER% start %SERVICE_NAME% >nul 2>&1
+    timeout /t 3 /nobreak >nul
+    sc \\%SERVER% query %SERVICE_NAME% | find "RUNNING" >nul
+    if %ERRORLEVEL% EQU 0 (
+        echo       OK - Servicio corriendo
+    ) else (
+        echo       ADVERTENCIA: El servicio no inicio correctamente
+        echo       Conectate por RDP y revisa: sc query %SERVICE_NAME%
+    )
+) else (
+    echo       AVISO: El servicio aun no esta registrado en el servidor.
+    echo       Conectate por RDP y ejecuta una sola vez:
+    echo.
+    echo       sc create "%SERVICE_NAME%" binPath= "%DEPLOY_PATH%\InventarioWeb.exe" DisplayName= "Inventario Web" start= auto
+    echo       netsh advfirewall firewall add rule name="%SERVICE_NAME%" dir=in action=allow protocol=TCP localport=5007
+    echo       sc start "%SERVICE_NAME%"
+)
+
+echo.
+echo ============================================
+echo   Deploy completado
+echo ============================================
+pause

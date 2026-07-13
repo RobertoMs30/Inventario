@@ -1,0 +1,337 @@
+@page
+@model InventarioWeb.Pages.Admin.UsuariosModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Gestión de Usuarios";
+}
+
+<style>
+    .catalogo-page { width: 100%; }
+
+    .catalogo-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .table-container {
+        background: #ffffff;
+        border-radius: 10px;
+        border: 1px solid #dde3ed;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(30,58,110,.08);
+        margin-bottom: 24px;
+    }
+
+    .dark-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .dark-table thead th {
+        background: #1e3a6e;
+        color: #a8c0e0;
+        font-size: .67rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .1em;
+        padding: 12px 16px;
+        border: none;
+        white-space: nowrap;
+    }
+
+    .dark-table tbody tr {
+        border-bottom: 1px solid #e4ecf9;
+        transition: background .12s;
+    }
+
+    .dark-table tbody tr:nth-child(even) { background: #eef3ff; }
+    .dark-table tbody tr:nth-child(odd)  { background: #ffffff; }
+    .dark-table tbody tr:last-child { border-bottom: none; }
+
+    .dark-table tbody tr:hover {
+        background: #dbeafe !important;
+        outline: 1.5px solid #93c5fd;
+        outline-offset: -1px;
+    }
+
+    .dark-table tbody td {
+        color: #1b2a45;
+        font-size: .9rem;
+        padding: 12px 16px;
+        vertical-align: middle;
+    }
+
+    .td-actions { display: flex; gap: 6px; align-items: center; }
+
+    .um-tag {
+        display: inline-block;
+        background: #e8eef8;
+        color: #1e3a6e;
+        border: 1px solid #c5d3ea;
+        border-radius: 4px;
+        font-size: .72rem;
+        font-weight: 600;
+        padding: 2px 7px;
+        text-transform: capitalize;
+    }
+</style>
+
+<div class="catalogo-page">
+
+    <div class="catalogo-header">
+        <h4 class="fw-bold mb-0"><i class="fa-solid fa-users me-2"></i>Gestión de Usuarios</h4>
+    </div>
+
+    @if (TempData["Exito"] != null)
+    {
+        <div class="alert alert-success mx-3 mt-3">@TempData["Exito"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger mx-3 mt-3">@TempData["Error"]</div>
+    }
+
+    <!-- Tabla de usuarios -->
+    <div class="table-container">
+        <table class="dark-table">
+            <thead>
+                <tr>
+                    <th>NOMBRE</th>
+                    <th>USUARIO</th>
+                    <th>MÓDULOS</th>
+                    <th>ESTADO</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model.Usuarios)
+                {
+                    <tr>
+                        <td>@u.Nombre</td>
+                        <td><span class="td-codigo">@u.Usuario</span></td>
+                        <td>
+                            @foreach (var m in u.Modulos.OrderBy(x => x))
+                            {
+                                <span class="um-tag me-1">@m</span>
+                            }
+                        </td>
+                        <td>
+                            @if (u.Activo)
+                            {
+                                <span class="badge bg-success">Activo</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inactivo</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="td-actions">
+                                <!-- Botón Editar módulos (siempre visible para otros) -->
+                                @if (u.Id != Model.UsuarioActual?.Id)
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary"
+                                            onclick="abrirModalEditar(@u.Id, '@u.Nombre', '@string.Join(",", u.Modulos)')">
+                                        <i class="fa-solid fa-pen-to-square me-1"></i>Editar
+                                    </button>
+                                }
+
+                                <!-- Botón Cambiar contraseña -->
+                                @if (u.Id != Model.UsuarioActual?.Id)
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            onclick="abrirModalPassword(@u.Id, '@u.Nombre')">
+                                        <i class="fa-solid fa-key me-1"></i>Contraseña
+                                    </button>
+                                }
+
+                                <!-- Botón Activar/Desactivar — oculto para el propio usuario -->
+                                @if (u.Id != Model.UsuarioActual?.Id)
+                                {
+                                    <form method="post" asp-page-handler="Toggle">
+                                        <input type="hidden" name="id" value="@u.Id"/>
+                                        <button type="submit"
+                                                class="btn btn-sm @(u.Activo ? "btn-outline-danger" : "btn-outline-success")">
+                                            @(u.Activo ? "Desactivar" : "Activar")
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small fst-italic">tu cuenta</span>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Formulario nuevo usuario -->
+    <div class="card m-3">
+        <div class="card-header fw-semibold">Crear nuevo usuario</div>
+        <div class="card-body">
+            <form method="post" asp-page-handler="Crear">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Nombre completo</label>
+                        <input type="text" name="nombre" class="form-control" placeholder="Ej: Juan Pérez"/>
+0                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Usuario</label>
+                        <input type="text" name="usuario" class="form-control" placeholder="Ej: jperez"/>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Contraseña</label>
+                        <input type="password" name="password" class="form-control" placeholder="Mínimo 6 caracteres"/>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label fw-semibold">Módulos permitidos</label>
+                    <div class="d-flex gap-4">
+                        @foreach (var modulo in InventarioWeb.Pages.Admin.UsuariosModel.ModulosDisponibles)
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox"
+                                       name="modulos" value="@modulo" id="mod_@modulo"/>
+                                <label class="form-check-label" for="mod_@modulo">
+                                    @modulo
+                                </label>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-user-plus me-1"></i>Crear usuario
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── Modal: Editar módulos ───────────────────────────────────── -->
+<div class="modal fade" id="modalEditarModulos" tabindex="-1" aria-labelledby="modalEditarLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#1e3a6e; color:#fff;">
+                <h5 class="modal-title" id="modalEditarLabel">
+                    <i class="fa-solid fa-pen-to-square me-2"></i>Editar módulos
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <form method="post" asp-page-handler="EditarModulos">
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="editarUserId"/>
+                    <p class="mb-3 text-muted small">
+                        Usuario: <strong id="editarUserNombre"></strong>
+                    </p>
+
+                    <label class="form-label fw-semibold mb-2">Módulos permitidos</label>
+                    <div class="d-flex flex-column gap-2">
+                        @foreach (var modulo in InventarioWeb.Pages.Admin.UsuariosModel.ModulosDisponibles)
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input editar-modulo-check"
+                                       type="checkbox"
+                                       name="modulos"
+                                       value="@modulo"
+                                       id="edit_mod_@modulo"/>
+                                <label class="form-check-label" for="edit_mod_@modulo">
+                                    @modulo
+                                </label>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk me-1"></i>Guardar cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: Cambiar contraseña ──────────────────────────────── -->
+<div class="modal fade" id="modalCambiarPassword" tabindex="-1" aria-labelledby="modalPassLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#1e3a6e; color:#fff;">
+                <h5 class="modal-title" id="modalPassLabel">
+                    <i class="fa-solid fa-key me-2"></i>Restablecer contraseña
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <form method="post" asp-page-handler="CambiarPassword">
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="passUserId"/>
+                    <p class="mb-3 text-muted small">
+                        Usuario: <strong id="passUserNombre"></strong>
+                    </p>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nueva contraseña</label>
+                        <input type="password" name="nuevaPassword" class="form-control"
+                               placeholder="Mínimo 6 caracteres" autocomplete="new-password"/>
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label fw-semibold">Confirmar contraseña</label>
+                        <input type="password" name="confirmarPassword" class="form-control"
+                               placeholder="Repite la contraseña" autocomplete="new-password"/>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk me-1"></i>Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function abrirModalEditar(id, nombre, modulosStr) {
+        // Asignar id y nombre
+        document.getElementById('editarUserId').value    = id;
+        document.getElementById('editarUserNombre').textContent = nombre;
+
+        // Módulos actuales del usuario (CSV)
+        const modulosActuales = modulosStr ? modulosStr.split(',') : [];
+
+        // Marcar los checkboxes según módulos actuales
+        document.querySelectorAll('.editar-modulo-check').forEach(cb => {
+            cb.checked = modulosActuales.includes(cb.value);
+        });
+
+        // Abrir modal
+        new bootstrap.Modal(document.getElementById('modalEditarModulos')).show();
+    }
+
+    function abrirModalPassword(id, nombre) {
+        document.getElementById('passUserId').value          = id;
+        document.getElementById('passUserNombre').textContent = nombre;
+
+        // Limpiar campos al abrir
+        document.querySelector('#modalCambiarPassword input[name="nuevaPassword"]').value    = '';
+        document.querySelector('#modalCambiarPassword input[name="confirmarPassword"]').value = '';
+
+        new bootstrap.Modal(document.getElementById('modalCambiarPassword')).show();
+    }
+</script>

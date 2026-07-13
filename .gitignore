@@ -1,0 +1,18 @@
+bin/
+obj/
+PublishOutput/
+publish-standalone/
+InventarioWeb_Rescatadopublish_output/
+*_publish_output/
+*.zip
+*.lscache
+*.user
+.vs/
+.claude/settings.local.json
+.claude/worktrees/
+
+# Configuracion con datos reales de servidor/credenciales - nunca subir
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Local.json
+deploy.bat

@@ -1,0 +1,449 @@
+@page
+@model CotizacionesModel
+@{
+    ViewData["Title"] = "Cotizaciones";
+    string buildUrl(int p) {
+        var q = string.IsNullOrWhiteSpace(Model.Q) ? "" : $"&q={Uri.EscapeDataString(Model.Q)}";
+        return $"/Cotizaciones?p={p}{q}";
+    }
+}
+
+<style>
+    /* ── Layout ── */
+    .cot-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1.5rem 1rem;
+    }
+    .cot-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.2rem;
+    }
+    .cot-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+    .cot-title i { color: var(--accent-primary); }
+    .search-bar {
+        display: flex;
+        gap: .5rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .info-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: .6rem;
+        font-size: .85rem;
+        color: var(--text-muted);
+    }
+
+    /* ── Tabla — mismo estilo que Entrada/Salida ── */
+    .cot-table-wrap {
+        overflow-x: auto;
+    }
+    .cot-table-wrap::-webkit-scrollbar { height: 6px; }
+    .cot-table-wrap::-webkit-scrollbar-track { background: transparent; }
+    .cot-table-wrap::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+    .cot-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 780px;
+    }
+    .cot-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+    .cot-table thead th {
+        background: #f1f4f9;
+        color: var(--text-muted);
+        font-size: .67rem;
+        font-weight: 700;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        padding: 11px 14px;
+        border-bottom: 1px solid var(--border-color);
+        white-space: nowrap;
+    }
+    .cot-table thead th:first-child { color: var(--text-muted); }
+
+    .cot-table tbody tr {
+        border-bottom: 1px solid #e4ecf9;
+        transition: background .12s;
+        cursor: pointer;
+    }
+    .cot-table tbody tr:nth-child(even) { background: #eef3ff; }
+    .cot-table tbody tr:nth-child(odd)  { background: #ffffff; }
+    .cot-table tbody tr:last-child { border-bottom: none; }
+    .cot-table tbody tr:hover {
+        background: #dbeafe !important;
+        outline: 1.5px solid #93c5fd;
+        outline-offset: -1px;
+    }
+    .cot-table tbody td {
+        padding: 11px 14px;
+        vertical-align: middle;
+        font-size: .9rem;
+        color: #1b2a45;
+    }
+    .cot-table tbody td:first-child {
+        color: #7ea8cc;
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .78rem;
+        width: 46px;
+        padding-right: 6px;
+        font-weight: 600;
+    }
+
+    /* Folio — pill igual a td-codigo */
+    .badge-folio {
+        display: inline-block;
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .82rem;
+        font-weight: 700;
+        color: #1d4ed8;
+        background: #eff6ff;
+        border: 1.5px solid #93c5fd;
+        border-radius: 6px;
+        padding: 3px 9px;
+        line-height: 1.5;
+        letter-spacing: .01em;
+        white-space: nowrap;
+    }
+
+    /* Fecha / texto secundario */
+    .cell-date {
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .8rem;
+        color: #475569;
+        white-space: nowrap;
+    }
+    .cell-muted { color: #64748b; font-size: .82rem; }
+
+    /* ── Botones de acción ── */
+    .btn-accion-ver {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .3rem .72rem;
+        font-size: .78rem;
+        font-weight: 600;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1.5px solid #93c5fd;
+        border-radius: 6px;
+        text-decoration: none;
+        transition: background .15s, border-color .15s;
+    }
+    .btn-accion-ver:hover { background: #dbeafe; border-color: #3b82f6; }
+
+    .btn-accion-edit {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .3rem .72rem;
+        font-size: .78rem;
+        font-weight: 600;
+        background: #fffbeb;
+        color: #b45309;
+        border: 1.5px solid #fcd34d;
+        border-radius: 6px;
+        text-decoration: none;
+        transition: background .15s;
+    }
+    .btn-accion-edit:hover { background: #fef3c7; }
+
+    .btn-del {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .3rem .6rem;
+        font-size: .78rem;
+        background: rgba(239,68,68,.08);
+        color: var(--accent-red);
+        border: 1.5px solid rgba(239,68,68,.28);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background .15s;
+        line-height: 1.2;
+    }
+    .btn-del:hover { background: rgba(239,68,68,.2); border-color: rgba(239,68,68,.55); }
+
+    /* ── Paginación ── */
+    .pagination-bar {
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+        margin-top: 1.1rem;
+        flex-wrap: wrap;
+    }
+    .page-btn {
+        padding: .3rem .65rem;
+        border-radius: 6px;
+        font-size: .8rem;
+        font-weight: 600;
+        border: 1px solid var(--border-color);
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        text-decoration: none;
+        transition: all .2s;
+    }
+    .page-btn:hover  { background: #1e3a6e; color: #fff; border-color: #1e3a6e; }
+    .page-btn.active { background: #1e3a6e; color: #fff; border-color: #1e3a6e; }
+    .page-btn.disabled { opacity: .4; pointer-events: none; }
+
+    /* ── Modal confirmación ── */
+    .confirm-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.65);
+        z-index: 9000;
+        align-items: center;
+        justify-content: center;
+    }
+    .confirm-overlay.active { display: flex; }
+    .confirm-box {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-light);
+        border-radius: 14px;
+        padding: 1.75rem;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 20px 60px rgba(0,0,0,.7);
+    }
+    .confirm-icon {
+        width: 48px; height: 48px;
+        background: rgba(239,68,68,.15);
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 1.4rem;
+        color: var(--accent-red);
+    }
+    .confirm-title {
+        text-align: center;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: .5rem;
+    }
+    .confirm-msg {
+        text-align: center;
+        font-size: .88rem;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+        line-height: 1.5;
+    }
+    .confirm-folio { color: #1d4ed8; font-family: monospace; font-weight: 700; }
+    .confirm-actions { display: flex; gap: .75rem; justify-content: center; }
+    .btn-confirm-cancel {
+        background: var(--bg-tertiary);
+        color: var(--text-muted);
+        border: 1px solid var(--border-color);
+        padding: .55rem 1.25rem;
+        border-radius: 8px;
+        font-size: .9rem;
+        cursor: pointer;
+        transition: all .2s;
+    }
+    .btn-confirm-cancel:hover { background: var(--border-light); color: var(--text-primary); }
+    .btn-confirm-delete {
+        background: var(--accent-red);
+        color: #fff;
+        border: none;
+        padding: .55rem 1.25rem;
+        border-radius: 8px;
+        font-size: .9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background .2s;
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+    }
+    .btn-confirm-delete:hover { background: #dc2626; }
+</style>
+
+
+<!-- Modal de confirmación de eliminación -->
+<div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-box">
+        <div class="confirm-icon"><i class="bi bi-trash3"></i></div>
+        <div class="confirm-title">¿Eliminar cotización?</div>
+        <div class="confirm-msg">
+            Se eliminará permanentemente la cotización
+            <span class="confirm-folio" id="confirmFolio"></span>
+            y todos sus ítems. Esta acción no se puede deshacer.
+        </div>
+        <div class="confirm-actions">
+            <button class="btn-confirm-cancel" onclick="cerrarModal()">Cancelar</button>
+            <form id="deleteForm" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="deleteId" />
+                <input type="hidden" name="q"  value="@Model.Q" />
+                <input type="hidden" name="p"  value="@Model.CurrentPage" />
+                <button type="submit" asp-page-handler="Eliminar" class="btn-confirm-delete">
+                    <i class="bi bi-trash3-fill"></i> Sí, eliminar
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="cot-container">
+    <div class="cot-header">
+        <div class="cot-title">
+            <i class="bi bi-file-earmark-text"></i>
+            Cotizaciones
+        </div>
+        <div class="search-bar">
+            <form method="get" class="d-flex gap-2 flex-wrap">
+                <input type="text" name="q" value="@Model.Q" placeholder="Buscar folio, cliente, proyecto…"
+                       class="form-control form-control-sm" style="min-width:240px;" />
+                <button type="submit" class="btn-accent" style="padding:.35rem .85rem;font-size:.85rem;">
+                    <i class="bi bi-search"></i> Buscar
+                </button>
+                @if (!string.IsNullOrWhiteSpace(Model.Q))
+                {
+                    <a href="/Cotizaciones" class="btn-outline-dark-custom" style="padding:.35rem .75rem;font-size:.85rem;text-decoration:none;">
+                        <i class="bi bi-x"></i> Limpiar
+                    </a>
+                }
+            </form>
+            <a asp-page="/NuevaCotizacion" class="btn-accent" style="padding:.4rem 1rem;font-size:.85rem;text-decoration:none;white-space:nowrap;">
+                <i class="bi bi-plus-lg"></i> Nueva cotización
+            </a>
+        </div>
+    </div>
+
+    <div class="info-bar">
+        <span><i class="bi bi-collection me-1"></i>Total: <strong style="color:var(--text-primary)">@Model.TotalRecords</strong> cotización(es)</span>
+        @if (!string.IsNullOrWhiteSpace(Model.Q))
+        {
+            <span>— Búsqueda: <em style="color:var(--accent-primary)">@Model.Q</em></span>
+        }
+        @if (Model.TotalRecords > 0)
+        {
+            var from = (Model.CurrentPage - 1) * Model.PageSize + 1;
+            var to   = Math.Min(Model.CurrentPage * Model.PageSize, Model.TotalRecords);
+            <span>Mostrando @from – @to</span>
+        }
+    </div>
+
+    @if (Model.Cotizaciones.Count == 0)
+    {
+        <div class="card-dark" style="padding:3rem;text-align:center;">
+            <i class="bi bi-inbox" style="font-size:2.5rem;color:var(--text-muted);"></i>
+            <p style="color:var(--text-muted);margin-top:1rem;font-size:1rem;">
+                @if (string.IsNullOrWhiteSpace(Model.Q))
+                {
+                    <text>Aún no hay cotizaciones. <a asp-page="/NuevaCotizacion" style="color:var(--accent-primary)">Crear la primera</a>.</text>
+                }
+                else
+                {
+                    <text>No se encontraron resultados para "<strong>@Model.Q</strong>".</text>
+                }
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="card-dark" style="padding:0;overflow:hidden;">
+            <div class="card-dark-header">
+                <h2><i class="bi bi-file-earmark-text me-2"></i>Listado de cotizaciones</h2>
+                <span class="badge-accent">@Model.TotalRecords registro(s)</span>
+            </div>
+            <div class="cot-table-wrap">
+                <table class="cot-table">
+                    <thead>
+                        <tr>
+                            <th>Folio</th>
+                            <th>Fecha</th>
+                            <th>Cliente</th>
+                            <th>Proyecto / Fase</th>
+                            <th>Registrado</th>
+                            <th style="text-align:center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model.Cotizaciones)
+                        {
+                            <tr onclick="window.location='/VerCotizacion/@c.Id'">
+                                <td><span class="badge-folio">@c.Folio</span></td>
+                                <td class="cell-date">@c.Fecha.ToString("yyyy-MM-dd")</td>
+                                <td>@c.Cliente</td>
+                                <td><span style="display:inline-block;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@c.Proyecto">@c.Proyecto</span></td>
+                                <td class="cell-muted">@c.FechaReg.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td style="text-align:center;" onclick="event.stopPropagation()">
+                                    <div style="display:inline-flex;gap:.4rem;align-items:center;">
+                                        <a asp-page="/VerCotizacion" asp-route-id="@c.Id" class="btn-accion-ver">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                        <a href="/EditarCotizacion/@c.Id" class="btn-accion-edit">
+                                            <i class="bi bi-pencil"></i> Editar
+                                        </a>
+                                        <button type="button" class="btn-del" onclick="abrirModal(@c.Id, '@c.Folio')">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="pagination-bar">
+                <a href="@buildUrl(Model.CurrentPage - 1)"
+                   class="page-btn @(Model.CurrentPage <= 1 ? "disabled" : "")">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+
+                @for (int i = 1; i <= Model.TotalPages; i++)
+                {
+                    <a href="@buildUrl(i)"
+                       class="page-btn @(i == Model.CurrentPage ? "active" : "")">@i</a>
+                }
+
+                <a href="@buildUrl(Model.CurrentPage + 1)"
+                   class="page-btn @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+<script>
+    function abrirModal(id, folio) {
+        document.getElementById('deleteId').value = id;
+        document.getElementById('confirmFolio').textContent = folio;
+        document.getElementById('confirmOverlay').classList.add('active');
+    }
+    function cerrarModal() {
+        document.getElementById('confirmOverlay').classList.remove('active');
+    }
+    document.getElementById('confirmOverlay').addEventListener('click', function(e) {
+        if (e.target === this) cerrarModal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') cerrarModal();
+    });
+</script>
+}

@@ -1,0 +1,383 @@
+@page "{id:int}"
+@model VerCotizacionModel
+@{
+    ViewData["Title"] = Model.Cotizacion != null ? $"Cotización {Model.Cotizacion.Folio}" : "Ver Cotización";
+    decimal grandTotal = Model.Items.Where(i => i.Marca != "__PARTIDA__").Sum(i => i.Total);
+    decimal descuento  = Model.Cotizacion != null && Model.Cotizacion.DescuentoPct > 0
+                         ? Math.Round(grandTotal * Model.Cotizacion.DescuentoPct / 100, 2) : 0;
+    decimal totalNeto  = grandTotal - descuento;
+}
+
+<style>
+    .ver-container {
+        max-width: 1350px;
+        margin: 0 auto;
+        padding: 1.5rem 1rem;
+    }
+    .ver-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .ver-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+    .ver-title i { color: var(--accent-primary); }
+
+    .folio-badge {
+        font-family: monospace;
+        font-size: 1.15rem;
+        background: rgba(30,58,110,.12);
+        color: var(--accent-primary);
+        padding: .3rem .75rem;
+        border-radius: 7px;
+        font-weight: 700;
+        letter-spacing: .8px;
+        border: 1px solid rgba(30,58,110,.25);
+    }
+
+    /* Meta-data grid */
+    .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: .75rem 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+    @@media (max-width: 900px)  { .meta-grid { grid-template-columns: 1fr 1fr; } }
+    @@media (max-width: 480px)  { .meta-grid { grid-template-columns: 1fr; } }
+
+    .meta-item { display: flex; flex-direction: column; gap: .15rem; }
+    .meta-label {
+        font-size: .72rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        font-weight: 600;
+    }
+    .meta-value {
+        font-size: .95rem;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    /* Tabla de ítems (read-only) */
+    .items-table-wrapper {
+        overflow-x: auto;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 1rem;
+    }
+    .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 950px;
+    }
+    .items-table thead th {
+        background: var(--bg-tertiary);
+        color: var(--accent-primary);
+        font-size: .78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        padding: .65rem .6rem;
+        border-bottom: 1px solid var(--border-color);
+        white-space: nowrap;
+    }
+    .items-table tbody td {
+        padding: .55rem .6rem;
+        font-size: .88rem;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+    }
+    .items-table tbody tr:last-child td { border-bottom: none; }
+    .items-table tbody tr:hover { background: rgba(30,58,110,.04); }
+
+    .no-item-badge {
+        font-family: monospace;
+        font-size: .82rem;
+        color: var(--accent-primary);
+        font-weight: 700;
+        background: rgba(30,58,110,.1);
+        padding: .15rem .4rem;
+        border-radius: 4px;
+    }
+    .moneda-badge {
+        font-size: .75rem;
+        font-weight: 700;
+        padding: .2rem .45rem;
+        border-radius: 4px;
+    }
+    .moneda-mxn { background: rgba(59,130,246,.12); color: var(--accent-blue); }
+    .moneda-usd { background: rgba(16,185,129,.12); color: var(--accent-green); }
+
+    .td-total {
+        font-family: monospace;
+        font-weight: 700;
+        color: var(--accent-primary);
+        text-align: right;
+        white-space: nowrap;
+    }
+    .td-num { text-align: right; white-space: nowrap; }
+
+    /* Fila de totales */
+    .tfoot-total {
+        background: var(--bg-tertiary);
+        border-top: 2px solid var(--accent-primary);
+    }
+    .tfoot-total td {
+        padding: .6rem .6rem;
+        font-size: .88rem;
+        border-bottom: none !important;
+    }
+    .grand-total-label {
+        font-weight: 700;
+        color: var(--text-muted);
+        text-align: right;
+        font-size: .82rem;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+    }
+    .grand-total-value {
+        font-family: monospace;
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--accent-primary);
+        text-align: right;
+    }
+</style>
+
+<div class="ver-container">
+
+
+    <div class="ver-header">
+        <div class="ver-title">
+            <i class="bi bi-file-earmark-text"></i>
+            Detalle de Cotización
+            <span class="folio-badge ms-2">@Model.Cotizacion!.Folio</span>
+        </div>
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
+            <a asp-page="/Cotizaciones" style="text-decoration:none;">
+                <span class="btn-outline-dark-custom"
+                      style="padding:.4rem .85rem;font-size:.85rem;display:inline-flex;align-items:center;gap:.35rem;">
+                    <i class="bi bi-arrow-left"></i> Volver
+                </span>
+            </a>
+            <a href="/EditarCotizacion/@Model.Id" style="text-decoration:none;">
+                <span style="background:rgba(255,193,7,.1);border:1px solid rgba(255,193,7,.35);color:#ffc107;border-radius:8px;padding:.4rem .85rem;font-size:.85rem;display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;">
+                    <i class="bi bi-pencil"></i> Editar
+                </span>
+            </a>
+            <a href="/ExportarCotizacion/@Model.Id" target="_blank" style="text-decoration:none;">
+                <span style="background:rgba(30,58,110,.12);border:1px solid rgba(30,58,110,.35);color:var(--accent-primary);border-radius:8px;padding:.4rem .85rem;font-size:.85rem;display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;">
+                    <i class="bi bi-file-earmark-pdf"></i> Descargar PDF
+                </span>
+            </a>
+            <button type="button"
+                    onclick="document.getElementById('confirmOverlay').style.display='flex'"
+                    style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:var(--accent-red);border-radius:8px;padding:.4rem .85rem;font-size:.85rem;display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;transition:all .2s;"
+                    onmouseover="this.style.background='rgba(239,68,68,.25)'"
+                    onmouseout="this.style.background='rgba(239,68,68,.12)'">
+                <i class="bi bi-trash3"></i> Eliminar
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal confirmación -->
+    <div id="confirmOverlay"
+         style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;align-items:center;justify-content:center;"
+         onclick="if(event.target===this)this.style.display='none'">
+        <div style="background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:14px;padding:1.75rem;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.7);">
+            <div style="width:48px;height:48px;background:rgba(239,68,68,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.4rem;color:var(--accent-red);">
+                <i class="bi bi-trash3"></i>
+            </div>
+            <div style="text-align:center;font-size:1rem;font-weight:700;color:var(--text-primary);margin-bottom:.5rem;">
+                ¿Eliminar cotización?
+            </div>
+            <div style="text-align:center;font-size:.88rem;color:var(--text-muted);margin-bottom:1.5rem;line-height:1.5;">
+                Se eliminará permanentemente la cotización
+                <span style="color:var(--accent-primary);font-family:monospace;font-weight:700;">@Model.Cotizacion!.Folio</span>
+                y todos sus ítems. Esta acción no se puede deshacer.
+            </div>
+            <div style="display:flex;gap:.75rem;justify-content:center;">
+                <button onclick="document.getElementById('confirmOverlay').style.display='none'"
+                        style="background:var(--bg-tertiary);color:var(--text-muted);border:1px solid var(--border-color);padding:.55rem 1.25rem;border-radius:8px;font-size:.9rem;cursor:pointer;">
+                    Cancelar
+                </button>
+                <form method="post" action="/Cotizaciones?handler=Eliminar">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Cotizacion.Id" />
+                    <input type="hidden" name="p"  value="1" />
+                    <button type="submit"
+                            style="background:var(--accent-red);color:#fff;border:none;padding:.55rem 1.25rem;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;">
+                        <i class="bi bi-trash3-fill"></i> Sí, eliminar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    @section Scripts {
+    <script>
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                var ov = document.getElementById('confirmOverlay');
+                if (ov) ov.style.display = 'none';
+            }
+        });
+        // Aseguramos que el overlay use flex al mostrarlo
+        document.getElementById('confirmOverlay').style.display = 'none';
+        document.querySelector('[onclick*="confirmOverlay"]')?.addEventListener('click', function() {
+            document.getElementById('confirmOverlay').style.display = 'flex';
+        });
+    </script>
+    }
+
+    <!-- ── META-DATOS ──────────────────────────────────────── -->
+    <div class="card-dark" style="padding:1.25rem;margin-bottom:1.5rem;">
+        <div class="meta-grid">
+            <div class="meta-item">
+                <span class="meta-label"><i class="bi bi-hash me-1"></i>Folio</span>
+                <span class="meta-value" style="font-family:monospace;color:var(--accent-primary);">
+                    @Model.Cotizacion.Folio
+                </span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label"><i class="bi bi-123 me-1"></i>Consecutivo</span>
+                <span class="meta-value" style="font-family:monospace;color:var(--accent-primary);font-weight:700;">
+                    @(Model.Cotizacion.Consecutivo.HasValue ? Model.Cotizacion.Consecutivo.Value.ToString() : "—")
+                </span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label"><i class="bi bi-calendar3 me-1"></i>Fecha</span>
+                <span class="meta-value">@Model.Cotizacion.Fecha.ToString("dd/MM/yyyy")</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label"><i class="bi bi-building me-1"></i>Cliente</span>
+                <span class="meta-value">@Model.Cotizacion.Cliente</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label"><i class="bi bi-diagram-3 me-1"></i>Proyecto / Fase</span>
+                <span class="meta-value">@Model.Cotizacion.Proyecto</span>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Model.Cotizacion.Rfq))
+            {
+            <div class="meta-item">
+                <span class="meta-label"><i class="bi bi-card-text me-1"></i>RFQ</span>
+                <span class="meta-value">@Model.Cotizacion.Rfq</span>
+            </div>
+            }
+            @if (Model.Cotizacion.DescuentoPct > 0)
+            {
+            <div class="meta-item">
+                <span class="meta-label"><i class="bi bi-percent me-1"></i>Descuento</span>
+                <span class="meta-value">@Model.Cotizacion.DescuentoPct.ToString("N2")%</span>
+            </div>
+            }
+        </div>
+        <div style="font-size:.75rem;color:var(--text-muted);padding-top:.5rem;border-top:1px solid var(--border-color);">
+            <i class="bi bi-clock me-1"></i>
+            Registrado el @Model.Cotizacion.FechaReg.ToString("dd/MM/yyyy") a las @Model.Cotizacion.FechaReg.ToString("HH:mm")
+        </div>
+    </div>
+
+    <!-- ── TABLA DE ÍTEMS ─────────────────────────────────── -->
+    <div class="card-dark" style="padding:1.25rem;">
+        <div class="card-dark-header"
+             style="margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border-color);font-size:.9rem;font-weight:600;display:flex;justify-content:space-between;align-items:center;">
+            <span>
+                <i class="bi bi-list-ul me-2" style="color:var(--accent-primary);"></i>
+                Ítems (@Model.Items.Count(i => i.Marca != "__PARTIDA__"))
+            </span>
+            <a href="/EntradaDesdeCotizacion/@Model.Id" style="text-decoration:none;">
+                <span style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.35);color:#16a34a;border-radius:7px;padding:.3rem .75rem;font-size:.82rem;display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;font-weight:600;transition:all .2s;"
+                      onmouseover="this.style.background='rgba(34,197,94,.22)'"
+                      onmouseout="this.style.background='rgba(34,197,94,.1)'">
+                    <i class="bi bi-box-arrow-in-down"></i> Dar entrada de material
+                </span>
+            </a>
+        </div>
+
+        @if (Model.Items.Count == 0)
+        {
+            <div style="text-align:center;padding:2rem;color:var(--text-muted);">
+                <i class="bi bi-inbox" style="font-size:2rem;"></i>
+                <p style="margin-top:.75rem;">Esta cotización no tiene ítems registrados.</p>
+            </div>
+        }
+        else
+        {
+            <div class="items-table-wrapper">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Ítem</th>
+                            <th>Descripción material / equipo</th>
+                            <th style="text-align:right;">Cantidad</th>
+                            <th>Unidad</th>
+                            <th>Marca</th>
+                            <th style="text-align:right;">Mano de obra</th>
+                            <th style="text-align:right;">P. Unitario</th>
+                            <th style="text-align:right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            if (item.Marca == "__PARTIDA__")
+                            {
+                                <tr style="background:#1e3a6e;border-bottom:1px solid #2a5298;">
+                                    <td colspan="8" style="padding:7px 14px;">
+                                        <span style="color:#c8dcf8;font-weight:700;font-size:.85rem;">
+                                            <i class="bi bi-bookmark-fill me-2" style="color:#6a90bc;font-size:.78rem;"></i>@item.Descripcion
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td><span class="no-item-badge">@item.NoItem</span></td>
+                                    <td>@item.Descripcion</td>
+                                    <td class="td-num">@item.Cantidad.ToString("N2")</td>
+                                    <td>@item.Unidad</td>
+                                    <td style="color:var(--text-muted);">@(item.Marca ?? "—")</td>
+                                    <td class="td-num">@item.ManoObra.ToString("N2")</td>
+                                    <td class="td-num">@item.PrecioUnitario.ToString("N2")</td>
+                                    <td class="td-total">@item.Total.ToString("N2")</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="tfoot-total">
+                            <td colspan="7" class="grand-total-label">Gran Total</td>
+                            <td class="grand-total-value">@grandTotal.ToString("N2")</td>
+                        </tr>
+                        @if (descuento > 0)
+                        {
+                        <tr class="tfoot-total">
+                            <td colspan="7" class="grand-total-label" style="color:var(--accent-red);">
+                                Descuento (@Model.Cotizacion!.DescuentoPct.ToString("N2")%)
+                            </td>
+                            <td class="grand-total-value" style="color:var(--accent-red);">-@descuento.ToString("N2")</td>
+                        </tr>
+                        <tr class="tfoot-total">
+                            <td colspan="7" class="grand-total-label">Total Neto</td>
+                            <td class="grand-total-value" style="font-size:1.1rem;">@totalNeto.ToString("N2")</td>
+                        </tr>
+                        }
+                    </tfoot>
+                </table>
+            </div>
+        }
+    </div>
+</div>

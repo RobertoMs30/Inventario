@@ -1,0 +1,590 @@
+@page
+@model InventarioWeb.Pages.DevolucionModel
+@{
+    ViewData["Title"] = "Devoluciones";
+}
+
+<div class="entrada-page">
+    <div class="entrada-grid">
+
+        <!-- FORMULARIO -->
+        <div class="card-dark">
+            <div class="card-dark-header">
+                <h2><i class="bi bi-arrow-return-left me-2"></i>Registrar devolución</h2>
+            </div>
+            <div class="card-dark-body">
+
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert-dark-error mb-3">
+                        <div class="fw-semibold mb-2">
+                            <i class="bi bi-exclamation-circle me-1"></i>
+                            Revisa lo siguiente:
+                        </div>
+                        <ul>
+                            @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                            {
+                                <li>@err.ErrorMessage</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                <form method="post" class="form-dark">
+                    <input type="hidden" asp-for="Form.CodFab"  id="inputCodFab" />
+                    <input type="hidden" asp-for="Form.CodInt"  id="inputCodInt" />
+                    <div class="form-grid">
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Folio</label>
+                            <input type="text" class="form-control folio-field"
+                                   value="@Model.NextFolio"
+                                   readonly disabled
+                                   tabindex="-1" />
+                        </div>
+
+                        <div class="form-group full-width" style="position:relative;">
+                            <label class="form-label">Código *</label>
+                            <input id="inputCodDisplay" class="form-control"
+                                   placeholder="Buscar por código o descripción..."
+                                   autocomplete="off" />
+                        </div>
+
+                        <div class="form-divider"><span>Datos de la devolución</span></div>
+
+                        <div class="form-group full-width" style="position:relative;">
+                            <label class="form-label">Descripción *</label>
+                            <textarea asp-for="Form.Descripcion" id="inputDescripcion" class="form-control"
+                                      rows="2" placeholder="Descripción del material" autocomplete="off"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Cantidad *</label>
+                            <input asp-for="Form.Cantidad" type="number" step="0.01" class="form-control" placeholder="0.00" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">UM</label>
+                            <input asp-for="Form.Um" id="inputUm" class="form-control" placeholder="Pza, Kg, etc." />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Fecha devolución *</label>
+                            <input asp-for="Form.FechaDevolucion" type="date" class="form-control" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Quién devuelve</label>
+                            <select asp-for="Form.Devuelve" class="form-control form-select-dev">
+                                <option value="">— Selecciona un empleado —</option>
+                                @foreach (var e in Model.Empleados)
+                                {
+                                    <option value="@e">@e</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Motivo</label>
+                            <input asp-for="Form.Motivo" class="form-control" placeholder="Razón de la devolución" />
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Proyecto</label>
+                            <select asp-for="Form.Proyecto" id="inputProyecto" class="form-control form-select-dev">
+                                <option value="">— Selecciona un proyecto —</option>
+                                @foreach (var p in Model.Proyectos)
+                                {
+                                    <option value="@p">@p</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Observaciones</label>
+                            <textarea asp-for="Form.Obs" class="form-control" rows="2" placeholder="Opcional"></textarea>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn-accent" type="submit">
+                                <i class="bi bi-check-lg"></i> Guardar
+                            </button>
+                            <a class="btn-secondary-dark" asp-page="/Devolucion">
+                                <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+                            </a>
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- HISTORIAL -->
+        <div class="card-dark">
+            <div class="card-dark-header">
+                <h2><i class="bi bi-clock-history me-2"></i>Últimas devoluciones</h2>
+                <span class="badge-accent">@Model.TotalRecords registros</span>
+            </div>
+            <div class="card-dark-body" style="padding-bottom:.5rem;">
+                <div class="filter-bar">
+                    <form method="get" id="frmFiltrosDev" class="filter-form">
+                        <div class="filter-field" style="position:relative;">
+                            <label>CÓDIGO</label>
+                            <input id="fdCodigo" name="FiltCodigo" value="@Model.FiltCodigo"
+                                   class="filter-input" placeholder="Buscar..." autocomplete="off" />
+                        </div>
+                        <div class="filter-field" style="position:relative;">
+                            <label>DESCRIPCIÓN</label>
+                            <input id="fdDesc" name="FiltDesc" value="@Model.FiltDesc"
+                                   class="filter-input" placeholder="Buscar..." autocomplete="off" />
+                        </div>
+                        <div class="filter-field">
+                            <label>FECHA</label>
+                            <input name="FiltFecha" type="date" value="@Model.FiltFecha" class="filter-input" />
+                        </div>
+                        <div class="filter-field" style="position:relative;">
+                            <label>PROYECTO</label>
+                            <input id="fdProyecto" name="FiltProyecto" value="@Model.FiltProyecto"
+                                   class="filter-input" placeholder="Buscar..." autocomplete="off" />
+                        </div>
+                        <div class="filter-field" style="position:relative;">
+                            <label>QUIÉN DEVUELVE</label>
+                            <input id="fdDevuelve" name="FiltDevuelve" value="@Model.FiltDevuelve"
+                                   class="filter-input" placeholder="Buscar..." autocomplete="off" />
+                        </div>
+                        <div class="filter-actions">
+                            <button type="submit" class="btn-filter-apply">
+                                <i class="bi bi-search"></i> Buscar
+                            </button>
+                            <a href="/Devolucion" class="btn-filter-clear">
+                                <i class="bi bi-x-lg"></i> Limpiar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="mini-cat-wrapper">
+                <table class="table-dark-custom">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>CÓDIGO</th>
+                            <th>DESCRIPCIÓN</th>
+                            <th class="text-right">CANTIDAD</th>
+                            <th>QUIÉN DEVUELVE</th>
+                            <th>MOTIVO</th>
+                            <th>PROYECTO</th>
+                            <th>FECHA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.Ultimas)
+                        {
+                            <tr>
+                                <td class="cell-muted">@r.Id</td>
+                                <td><span class="td-codigo">@r.CodFab</span></td>
+                                <td><span class="cell-desc" title="@r.Descripcion">@r.Descripcion</span></td>
+                                <td>
+                                    <div class="qty-wrap">
+                                        @r.Cantidad.ToString("N2")
+                                        <span class="um-tag">@r.Um</span>
+                                    </div>
+                                </td>
+                                <td class="cell-muted">@(r.Devuelve ?? "—")</td>
+                                <td class="cell-muted"><span class="cell-desc" title="@r.Motivo">@(r.Motivo ?? "—")</span></td>
+                                <td class="cell-muted">@(r.Proyecto ?? "—")</td>
+                                <td class="cell-date">@r.FechaDevolucion.ToString("yyyy-MM-dd")</td>
+                            </tr>
+                        }
+                        @if (!Model.Ultimas.Any())
+                        {
+                            <tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:2rem;">Sin registros</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    .entrada-page { width: 100%; }
+    .entrada-grid {
+        display: grid;
+        grid-template-columns: 480px 1fr;
+        gap: 24px;
+        align-items: start;
+    }
+    @@media (max-width: 1100px) { .entrada-grid { grid-template-columns: 1fr; } }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group.full-width { grid-column: 1 / -1; }
+    .form-actions { grid-column: 1 / -1; display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+
+    /* ── Labels — mismo estilo que salida ── */
+    .entrada-page .form-dark .form-label {
+        font-size: .83rem;
+        font-weight: 600;
+        color: #0f172a;
+        text-transform: none;
+        letter-spacing: .01em;
+        margin-bottom: 4px;
+    }
+
+    /* ── Inputs — cápsula igual que salida ── */
+    .entrada-page .form-dark .form-control,
+    .entrada-page .form-dark .form-select {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 50px;
+        background: #f5f7fa;
+        font-size: .92rem;
+        color: #0f172a;
+        padding: 10px 18px;
+        box-shadow: none;
+        transition: border-color .18s, background .18s, box-shadow .18s;
+    }
+    .entrada-page .form-dark .form-control:focus,
+    .entrada-page .form-dark .form-select:focus {
+        border-color: #93c5fd;
+        background: #ffffff;
+        box-shadow: 0 0 0 3px rgba(147,197,253,.25);
+        outline: none;
+    }
+    .entrada-page .form-dark .form-control::placeholder {
+        color: #a0aec0;
+        font-size: .88rem;
+    }
+    .entrada-page .form-dark textarea.form-control {
+        border-radius: 14px;
+        padding: 10px 16px;
+    }
+
+    /* ── Divider — barra azul igual que salida ── */
+    .form-divider {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 16px 0 2px;
+        color: #334155;
+        font-size: .75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .07em;
+    }
+    .form-divider::before {
+        content: '';
+        width: 3px;
+        height: 14px;
+        background: #2563eb;
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
+    .form-divider::after { display: none; }
+
+    /* ── Tabla — header oscuro igual que salida ── */
+    .entrada-page .table-dark-custom thead {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+    .entrada-page .table-dark-custom thead th {
+        background: #1e3a6e;
+        color: #a8c0e0;
+        font-size: .67rem;
+        font-weight: 700;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        padding: 11px 14px;
+        border: none;
+        white-space: nowrap;
+    }
+    .entrada-page .table-dark-custom tbody tr:nth-child(even) { background: #eef3ff; }
+    .entrada-page .table-dark-custom tbody tr:nth-child(odd)  { background: #ffffff; }
+    .entrada-page .table-dark-custom tbody tr:hover {
+        background: #dbeafe !important;
+        outline: 1.5px solid #93c5fd;
+        outline-offset: -1px;
+    }
+
+    .mini-cat-wrapper { max-height: 520px; overflow-y: auto; overflow-x: auto; }
+    .mini-cat-wrapper::-webkit-scrollbar { width: 6px; height: 6px; }
+    .mini-cat-wrapper::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+    .cell-muted { color: #334155; font-size: .85rem; }
+
+    /* ── Estilos de celda — igual que salida ── */
+    .td-codigo {
+        display: inline-block;
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .82rem;
+        font-weight: 700;
+        color: #1d4ed8;
+        background: #eff6ff;
+        border: 1.5px solid #93c5fd;
+        border-radius: 6px;
+        padding: 3px 9px;
+        line-height: 1.5;
+        white-space: nowrap;
+    }
+    .cell-desc {
+        display: inline-block;
+        color: #0f172a;
+        font-size: .9rem;
+        font-weight: 500;
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .qty-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .92rem;
+        font-weight: 700;
+        color: #1e3a6e;
+    }
+    .um-tag {
+        font-family: system-ui, sans-serif;
+        font-size: .63rem;
+        font-weight: 700;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        padding: 3px 7px;
+        border-radius: 5px;
+        background: #2563eb;
+        color: #ffffff;
+        flex-shrink: 0;
+    }
+    .cell-date {
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .8rem;
+        color: #475569;
+        white-space: nowrap;
+    }
+
+    /* ── Barra de filtros — mismo estilo que salida ── */
+    .filter-bar { padding: .9rem 1rem .5rem; border-bottom: 1px solid var(--border-color); }
+    .filter-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    .filter-field { display: flex; flex-direction: column; gap: 4px; min-width: 120px; flex: 1; }
+    .filter-field label { font-size: .7rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .filter-input { padding: .32rem .55rem; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: .82rem; width: 100%; }
+    .filter-input:focus { border-color: var(--accent-primary); outline: none; }
+    .filter-actions { display: flex; gap: 7px; align-items: flex-end; flex-shrink: 0; }
+    .btn-filter-apply {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: .38rem .9rem; background: #1e3a6e; color: #ffffff;
+        border: none; border-radius: 7px; font-size: .82rem; font-weight: 600;
+        cursor: pointer; white-space: nowrap;
+    }
+    .btn-filter-apply:hover { background: #162e5a; }
+    .btn-filter-clear {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: .38rem .9rem; background: var(--bg-secondary); color: #475569;
+        border: 1px solid var(--border-color); border-radius: 7px;
+        font-size: .82rem; text-decoration: none; white-space: nowrap;
+    }
+    .btn-filter-clear:hover { border-color: #1e3a6e; color: #1e3a6e; }
+
+    /* ── Autocomplete ── */
+    .ac-dev-dropdown { position: fixed; background: var(--bg-secondary); border: 1px solid var(--accent-primary); border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,.7); z-index: 99999; overflow-y: auto; min-width: 300px; }
+    .ac-dev-item { padding: .5rem .85rem; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,.03); transition: background .15s; }
+    .ac-dev-item:hover, .ac-dev-item.active { background: rgba(30,58,110,.13); }
+    .ac-dev-codfab { color: var(--accent-primary); font-family: monospace; font-size: .85rem; font-weight: 700; }
+    .ac-dev-desc { color: var(--text-primary); font-size: .82rem; margin-top:.1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ac-dev-meta { color: var(--text-muted); font-size: .74rem; margin-top:.1rem; }
+    .ac-salida-dropdown { position: fixed; background: var(--bg-secondary); border: 1px solid var(--accent-primary); border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,.7); z-index: 99999; overflow-y: auto; min-width: 180px; }
+    .ac-salida-item { padding: .45rem .75rem; cursor: pointer; font-size: .82rem; border-bottom: 1px solid rgba(0,0,0,.03); }
+    .ac-salida-item:hover, .ac-salida-item.active { background: rgba(30,58,110,.13); }
+
+    .form-select-dev {
+        appearance: none; -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%232563eb' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 16px center; background-size: 14px;
+        padding-right: 40px !important; cursor: pointer;
+    }
+    .form-select-dev:focus { border-color: #93c5fd !important; background-color: #fff !important; box-shadow: 0 0 0 3px rgba(147,197,253,.25) !important; outline: none !important; }
+    .form-select-dev option { font-size: .9rem; color: #0f172a; }
+    .form-select-dev option:first-child { color: #a0aec0; }
+
+    /* ── Folio — solo lectura ── */
+    .entrada-page .form-dark .folio-field {
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: .97rem;
+        font-weight: 700;
+        color: #1d4ed8;
+        background: #eff6ff !important;
+        border: 1.5px solid #93c5fd !important;
+        border-radius: 50px;
+        cursor: not-allowed;
+        user-select: none;
+        opacity: 1;
+        letter-spacing: .04em;
+    }
+</style>
+
+@section Scripts {
+<script>
+(function () {
+    function escHtml(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+    const fCodFab   = document.getElementById('inputCodFab');
+    const fCodInt   = document.getElementById('inputCodInt');
+    const fCodDisp  = document.getElementById('inputCodDisplay');
+    const fDesc     = document.getElementById('inputDescripcion');
+    const fUm       = document.getElementById('inputUm');
+    const fProyecto = document.getElementById('inputProyecto');
+
+    // ── Autocomplete búsqueda material (desde Código o Descripción) ──────────
+    let dropCat = null, catResults = [], catIdx = -1, acAnchor = fCodDisp;
+
+    function posCat() {
+        if (!dropCat) return;
+        const rect = acAnchor.getBoundingClientRect();
+        const w = Math.max(rect.width, 360);
+        let left = rect.left;
+        if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+        dropCat.style.width = w + 'px';
+        dropCat.style.left  = left + 'px';
+        dropCat.style.top   = (rect.bottom + 4) + 'px';
+        dropCat.style.maxHeight = Math.min(300, window.innerHeight - rect.bottom - 8) + 'px';
+    }
+
+    function closeCat() { if (dropCat) { dropCat.remove(); dropCat = null; } catIdx = -1; }
+
+    function fillForm(item) {
+        fCodFab.value  = item.codFab || '';
+        fCodInt.value  = item.codInt || item.codFab || '';
+        fCodDisp.value = item.codFab || '';
+        fDesc.value    = item.descripcion || '';
+        fUm.value      = item.um || '';
+        if (fProyecto && item.proyecto) {
+            const hasOpt = Array.from(fProyecto.options).some(o => o.value === item.proyecto);
+            if (hasOpt) fProyecto.value = item.proyecto;
+        }
+        closeCat();
+        document.getElementById('Form_Cantidad')?.focus();
+    }
+
+    function showCat(items) {
+        closeCat();
+        catResults = items; catIdx = -1;
+        dropCat = document.createElement('div');
+        dropCat.className = 'ac-dev-dropdown';
+        if (!items.length) {
+            dropCat.innerHTML = '<div style="padding:.6rem .85rem;color:var(--text-muted);font-size:.82rem;">Sin resultados</div>';
+        } else {
+            items.forEach((it, i) => {
+                const d = document.createElement('div');
+                d.className = 'ac-dev-item';
+                d.innerHTML = `<div class="ac-dev-codfab">${escHtml(it.codFab)}</div>
+                    <div class="ac-dev-desc">${escHtml(it.descripcion)}</div>
+                    <div class="ac-dev-meta">${it.um ? escHtml(it.um) : ''} ${it.proyecto ? '&nbsp;·&nbsp; ' + escHtml(it.proyecto) : ''}</div>`;
+                d.addEventListener('mousedown', e => { e.preventDefault(); fillForm(it); });
+                dropCat.appendChild(d);
+            });
+        }
+        document.body.appendChild(dropCat);
+        posCat();
+    }
+
+    window.addEventListener('scroll', () => { if (dropCat) posCat(); }, { passive: true });
+    window.addEventListener('resize', () => { if (dropCat) posCat(); }, { passive: true });
+
+    const searchCat = debounce(async q => {
+        if (!q) { closeCat(); return; }
+        try {
+            const r = await fetch(`/Devolucion?handler=BuscarSalidas&q=${encodeURIComponent(q)}`,
+                { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            showCat(await r.json());
+        } catch { closeCat(); }
+    }, 250);
+
+    function attachCatAc(el) {
+        el.addEventListener('input', () => {
+            acAnchor = el;
+            fCodFab.value = '';
+            searchCat(el.value.trim());
+        });
+        el.addEventListener('blur', () => setTimeout(closeCat, 160));
+        el.addEventListener('keydown', e => {
+            if (!dropCat) return;
+            const items = dropCat.querySelectorAll('.ac-dev-item');
+            if      (e.key === 'ArrowDown')            { e.preventDefault(); catIdx = Math.min(catIdx+1, items.length-1); items.forEach((el2,i) => el2.classList.toggle('active', i===catIdx)); }
+            else if (e.key === 'ArrowUp')              { e.preventDefault(); catIdx = Math.max(catIdx-1, 0); items.forEach((el2,i) => el2.classList.toggle('active', i===catIdx)); }
+            else if (e.key === 'Enter' && catIdx >= 0) { e.preventDefault(); fillForm(catResults[catIdx]); }
+            else if (e.key === 'Escape')               { closeCat(); }
+        });
+    }
+
+    attachCatAc(fCodDisp);
+    attachCatAc(fDesc);
+
+
+    // ── Autocomplete filtros historial ─────────────────
+    function makeFilterAc(inputId, handler) {
+        const inp  = document.getElementById(inputId);
+        if (!inp) return;
+        const form = document.getElementById('frmFiltrosDev');
+        let drop = null, idx = -1, results = [];
+
+        function pos() {
+            if (!drop) return;
+            const rect = inp.getBoundingClientRect();
+            const w = Math.max(rect.width, 180);
+            let left = rect.left;
+            if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+            drop.style.width = w + 'px'; drop.style.left = left + 'px';
+            drop.style.top = (rect.bottom + 4) + 'px';
+            drop.style.maxHeight = Math.min(200, window.innerHeight - rect.bottom - 8) + 'px';
+        }
+        function close() { if (drop) { drop.remove(); drop = null; } idx = -1; }
+        function select(val) { inp.value = val; close(); form.submit(); }
+        function show(items) {
+            close(); results = items; idx = -1;
+            drop = document.createElement('div');
+            drop.className = 'ac-salida-dropdown';
+            if (!items.length) { drop.style.display = 'none'; return; }
+            items.forEach(val => {
+                const d = document.createElement('div');
+                d.className = 'ac-salida-item';
+                d.textContent = val;
+                d.addEventListener('mousedown', e => { e.preventDefault(); select(val); });
+                drop.appendChild(d);
+            });
+            document.body.appendChild(drop);
+            pos();
+        }
+        const doSearch = debounce(async q => {
+            if (!q) { close(); return; }
+            try {
+                const r = await fetch(`/Devolucion?handler=${handler}&q=${encodeURIComponent(q)}`,
+                    { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                show(await r.json());
+            } catch { close(); }
+        }, 250);
+        inp.addEventListener('input',  () => doSearch(inp.value.trim()));
+        inp.addEventListener('blur',   () => setTimeout(close, 160));
+        inp.addEventListener('keydown', e => {
+            if (!drop) return;
+            const its = drop.querySelectorAll('.ac-salida-item');
+            if      (e.key === 'ArrowDown')             { e.preventDefault(); idx = Math.min(idx+1, its.length-1); its.forEach((el,i)=>el.classList.toggle('active',i===idx)); }
+            else if (e.key === 'ArrowUp')               { e.preventDefault(); idx = Math.max(idx-1,0); its.forEach((el,i)=>el.classList.toggle('active',i===idx)); }
+            else if (e.key === 'Enter' && idx >= 0)     { e.preventDefault(); select(results[idx]); }
+            else if (e.key === 'Escape')                { close(); }
+        });
+        window.addEventListener('scroll', () => { if (drop) pos(); }, { passive: true });
+    }
+
+    makeFilterAc('fdCodigo',   'SugCodigo');
+    makeFilterAc('fdDesc',     'SugDesc');
+    makeFilterAc('fdProyecto', 'SugProyecto');
+    makeFilterAc('fdDevuelve', 'SugDevuelve');
+})();
+</script>
+}
