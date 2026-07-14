@@ -46,11 +46,6 @@ desarrollo local, que **no** se versiona).
 | `Banxico:Token` / `Banxico:SerieUsdMxn` | Token de la API de Banxico para el tipo de cambio USD/MXN (`SF43718`). |
 | `Logging:LogLevel`                 | Nivel de logs (por defecto `Warning`).                               |
 
-> ⚠️ No subas cadenas de conexión ni tokens reales al repositorio. Usa
-> `appsettings.Development.json` (ignorado por git) o variables de entorno.
-
----
-
 ## Cómo correr en local
 
 ```bash
